@@ -71,8 +71,7 @@ function handleInjectorMessage(data) {
 
     // 检查 extension context 是否有效
     if (!chrome.runtime?.id) {
-        console.warn('[MCP Bridge Content] Extension context invalidated');
-        
+
         // 如果是请求拦截消息，直接返回原始 body
         if (requestId) {
             window.postMessage({

@@ -34,7 +34,7 @@ export class StatusPanel {
                 this.position = JSON.parse(saved);
             }
         } catch (e) {
-            console.warn('[MCP Bridge] Failed to load panel position:', e);
+            console.log('[MCP Bridge] Failed to load panel position:', e);
         }
     }
     
@@ -47,7 +47,7 @@ export class StatusPanel {
                 localStorage.setItem('mcp-bridge-panel-position', JSON.stringify(this.position));
             }
         } catch (e) {
-            console.warn('[MCP Bridge] Failed to save panel position:', e);
+            console.log('[MCP Bridge] Failed to save panel position:', e);
         }
     }
 
@@ -60,7 +60,6 @@ export class StatusPanel {
         // 检查页面上是否已经存在面板（防止重复创建）
         const existingHost = document.getElementById('mcp-bridge-status-panel-host');
         if (existingHost) {
-            console.warn('[MCP Bridge] Panel already exists, removing duplicate');
             existingHost.remove();
         }
 
@@ -484,7 +483,6 @@ export class StatusPanel {
      */
     destroy() {
         if (this.isPermanent) {
-            console.warn('[MCP Bridge] Panel is permanent, cannot destroy');
             return;
         }
         
