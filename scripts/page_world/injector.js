@@ -37,9 +37,15 @@
     // --- Fetch Hook ---
     hookFetch({
         optionsHook: async function(options, url) {
-            if (!shouldInterceptRequest(url)) return options;
-
+            console.log('[MCP Bridge] Fetch request intercepted:', url);
+            if (!shouldInterceptRequest(url)) {
+                console.log('[MCP Bridge] Request not in API list, skipping');
+                return options;
+            }
+            
+            console.log('[MCP Bridge] Request matches API list, sending to background');
             const responsePayload = await sendMessageAndWaitForResponse('FETCH_REQUEST_BODY', { url, body: options.body });
+            console.log('[MCP Bridge] Received modified body from background');
             options.body = responsePayload.modifiedBody;
             return options;
         },
@@ -469,13 +475,28 @@
     function shouldInterceptRequest(url) {
         try {
             const apiList = JSON.parse(localStorage.getItem('mcp_api_list') || '[]');
-            if (!apiList || !url) return false;
+            console.log('[MCP Bridge] Checking URL:', url);
+            console.log('[MCP Bridge] API list from localStorage:', apiList);
+            
+            if (!apiList || !url) {
+                console.log('[MCP Bridge] apiList or url is empty');
+                return false;
+            }
+            
             const currentHostname = window.location.hostname;
+            console.log('[MCP Bridge] Current hostname:', currentHostname);
+            
             const shouldIntercept = apiList.some(apiItem => {
                 if (apiItem.hostname !== currentHostname) return false;
                 const apis = Array.isArray(apiItem.api) ? apiItem.api : [apiItem.api];
-                return apis.some(apiEndpoint => url.includes(apiEndpoint));
+                return apis.some(apiEndpoint => {
+                    const matches = url.includes(apiEndpoint);
+                    console.log(`[MCP Bridge] Checking ${apiEndpoint} in ${url}: ${matches}`);
+                    return matches;
+                });
             });
+            
+            console.log('[MCP Bridge] Should intercept:', shouldIntercept);
             return shouldIntercept;
         } catch (e) {
             console.error('MCP Bridge: Error in shouldInterceptRequest:', e);
