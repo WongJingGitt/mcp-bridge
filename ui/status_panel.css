@@ -55,9 +55,21 @@
     width: 64px;
     height: 64px;
     border-radius: 50%;
-    cursor: pointer;
+    cursor: grab;
     overflow: visible;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mcp-status-panel.minimized:hover {
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+    transform: scale(1.05);
+}
+
+.mcp-status-panel.minimized:active {
+    cursor: grabbing;
 }
 
 .mcp-status-panel.minimized .panel-header {
@@ -65,13 +77,18 @@
     border: none;
     background: transparent;
     justify-content: center;
-    cursor: pointer;
+    align-items: center;
+    cursor: inherit;
+    width: 100%;
+    height: 100%;
 }
 
 .mcp-status-panel.minimized .panel-title {
-    width: 48px;
-    height: 48px;
+    width: 100%;
+    height: 100%;
+    display: flex;
     justify-content: center;
+    align-items: center;
     margin: 0;
     position: relative;
 }
@@ -80,13 +97,15 @@
 .mcp-status-panel.minimized .panel-title::before {
     content: '';
     position: absolute;
-    top: -4px;
-    left: -4px;
-    right: -4px;
-    bottom: -4px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 56px;
+    height: 56px;
     border-radius: 50%;
     border: 2px solid transparent;
     transition: all 0.3s ease;
+    pointer-events: none;
 }
 
 /* 执行状态的旋转环 */
@@ -106,8 +125,8 @@
 }
 
 @keyframes rotateRing {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from { transform: translate(-50%, -50%) rotate(0deg); }
+    to { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
 .mcp-status-panel.minimized .panel-title span,
@@ -119,6 +138,8 @@
 .mcp-status-panel.minimized .panel-title-icon {
     width: 32px;
     height: 32px;
+    position: relative;
+    z-index: 1;
 }
 
 /* 拖拽中状态 */
@@ -531,6 +552,43 @@
     border-top: 1px solid rgba(31, 35, 40, 0.08);
 }
 
+/* 显示输入框按钮 */
+.show-input-btn {
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, rgba(9, 105, 218, 0.06) 0%, rgba(88, 166, 255, 0.06) 100%);
+    border: 1.5px dashed rgba(9, 105, 218, 0.3);
+    border-radius: 8px;
+    color: #0969da;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.show-input-btn:hover {
+    background: linear-gradient(135deg, rgba(9, 105, 218, 0.1) 0%, rgba(88, 166, 255, 0.1) 100%);
+    border-color: rgba(9, 105, 218, 0.5);
+    border-style: solid;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(9, 105, 218, 0.15);
+}
+
+.show-input-btn:active {
+    transform: translateY(0);
+}
+
+.show-input-btn .btn-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
 .manual-input-box {
     width: 100%;
     padding: 10px 12px;
@@ -587,6 +645,17 @@
 @media (prefers-color-scheme: dark) {
     .manual-input-section {
         border-top-color: rgba(48, 54, 61, 0.8);
+    }
+    
+    .show-input-btn {
+        background: linear-gradient(135deg, rgba(88, 166, 255, 0.08) 0%, rgba(31, 111, 235, 0.08) 100%);
+        border-color: rgba(88, 166, 255, 0.3);
+        color: #58a6ff;
+    }
+    
+    .show-input-btn:hover {
+        background: linear-gradient(135deg, rgba(88, 166, 255, 0.12) 0%, rgba(31, 111, 235, 0.12) 100%);
+        border-color: rgba(88, 166, 255, 0.5);
     }
     
     .manual-input-box {

@@ -15,6 +15,7 @@ export class StatusPanel {
         this.isPermanent = true; // 常驻模式
         this.isMinimized = false; // 最小化状态
         this.isDragging = false; // 拖拽状态
+        this.dragStarted = false; // 拖拽是否已开始
         this.dragOffset = { x: 0, y: 0 }; // 拖拽偏移
         this.position = null; // 自定义位置 {left, top} 或 null
         this.idleTimer = null; // 闲置计时器
@@ -118,7 +119,13 @@ export class StatusPanel {
           <div class="status-icon">⚪</div>
           <div class="status-text">准备就绪</div>
         </div>
-        <div class="manual-input-section">
+        <button class="show-input-btn" title="显示输入框">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/>
+          </svg>
+          <span>手动发送消息</span>
+        </button>
+        <div class="manual-input-section" style="display: none;">
           <textarea class="manual-input-box" placeholder="如果自动检测失败，可以在此粘贴完整回复内容..." rows="3"></textarea>
           <button class="manual-send-btn">发送到 MCP</button>
         </div>
@@ -169,29 +176,84 @@ export class StatusPanel {
             this.handleRedetect();
         });
         
+        // 显示输入框按钮
+        const showInputBtn = this.shadowRoot.querySelector('.show-input-btn');
+        showInputBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleManualInput();
+        });
+        
         // 手动发送按钮事件
         const manualSendBtn = this.shadowRoot.querySelector('.manual-send-btn');
         manualSendBtn.addEventListener('click', () => this.handleManualSend());
         
         // 拖拽事件（只在头部有效，不包括按钮）
         const header = this.shadowRoot.querySelector('.panel-header');
+        let clickStartTime = 0;
+        let clickStartPos = { x: 0, y: 0 };
+        
         header.addEventListener('mousedown', (e) => {
             // 如果点击的是按钮，不触发拖拽
             if (e.target.closest('.panel-action-btn') || e.target.closest('.panel-toggle-btn')) {
                 return;
             }
             
-            // 如果是最小化状态，点击恢复
-            if (this.isMinimized) {
-                this.toggleMinimize();
-                return;
-            }
+            clickStartTime = Date.now();
+            clickStartPos = { x: e.clientX, y: e.clientY };
+            this.dragStarted = false;
             
-            this.startDrag(e);
+            // 非最小化状态直接开始拖拽
+            if (!this.isMinimized) {
+                this.startDrag(e);
+                this.dragStarted = true;
+            }
         });
         
-        document.addEventListener('mousemove', (e) => this.onDrag(e));
-        document.addEventListener('mouseup', () => this.stopDrag());
+        // 监听 mousemove，最小化状态下如果移动超过阈值则开始拖拽
+        const handleMouseMove = (e) => {
+            if (this.isMinimized && !this.dragStarted && clickStartTime > 0) {
+                const moveDistance = Math.sqrt(
+                    Math.pow(e.clientX - clickStartPos.x, 2) + 
+                    Math.pow(e.clientY - clickStartPos.y, 2)
+                );
+                
+                // 移动超过5px，开始拖拽
+                if (moveDistance > 5) {
+                    // 创建一个模拟事件，使用点击起始位置
+                    const simulatedEvent = {
+                        clientX: clickStartPos.x,
+                        clientY: clickStartPos.y,
+                        preventDefault: () => {}
+                    };
+                    this.startDrag(simulatedEvent);
+                    this.dragStarted = true;
+                }
+            }
+            
+            // 继续处理拖拽
+            this.onDrag(e);
+        };
+        
+        document.addEventListener('mousemove', handleMouseMove);
+        
+        const handleMouseUp = (e) => {
+            const clickDuration = Date.now() - clickStartTime;
+            const moveDistance = Math.sqrt(
+                Math.pow(e.clientX - clickStartPos.x, 2) + 
+                Math.pow(e.clientY - clickStartPos.y, 2)
+            );
+            
+            // 如果是最小化状态，且是快速点击（不是拖拽），则展开
+            if (this.isMinimized && clickDuration < 300 && moveDistance < 5 && !this.dragStarted) {
+                this.toggleMinimize();
+            }
+            
+            clickStartTime = 0;
+            this.dragStarted = false;
+            this.stopDrag();
+        };
+        
+        document.addEventListener('mouseup', handleMouseUp);
         
         // 活跃检测（鼠标移入）
         panel.addEventListener('mouseenter', () => this.markActive());
@@ -207,12 +269,27 @@ export class StatusPanel {
         panel.classList.add('dragging');
         
         const rect = panel.getBoundingClientRect();
-        this.dragOffset = {
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top
-        };
+        
+        // 在最小化状态下，使用面板中心作为拖拽点
+        if (this.isMinimized) {
+            this.dragOffset = {
+                x: rect.width / 2,
+                y: rect.height / 2
+            };
+        } else {
+            // 非最小化状态，使用实际点击位置的偏移
+            this.dragOffset = {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
         
         this.markActive();
+        
+        // 阻止默认行为，防止文本选择
+        if (e.preventDefault) {
+            e.preventDefault();
+        }
     }
     
     /**
@@ -265,6 +342,27 @@ export class StatusPanel {
             panel.classList.add('minimized');
         } else {
             panel.classList.remove('minimized');
+        }
+        
+        this.markActive();
+    }
+    
+    /**
+     * 切换手动输入框显示
+     */
+    toggleManualInput() {
+        const inputSection = this.shadowRoot.querySelector('.manual-input-section');
+        const showBtn = this.shadowRoot.querySelector('.show-input-btn');
+        
+        if (inputSection.style.display === 'none') {
+            inputSection.style.display = 'block';
+            showBtn.style.display = 'none';
+            // 聚焦到输入框
+            const textarea = inputSection.querySelector('.manual-input-box');
+            setTimeout(() => textarea?.focus(), 100);
+        } else {
+            inputSection.style.display = 'none';
+            showBtn.style.display = 'flex';
         }
         
         this.markActive();
@@ -461,6 +559,16 @@ export class StatusPanel {
         <div class="status-text">${message}</div>
       </div>
       ${detailsHtml}
+      <button class="show-input-btn" title="显示输入框">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/>
+        </svg>
+        <span>手动发送消息</span>
+      </button>
+      <div class="manual-input-section" style="display: none;">
+        <textarea class="manual-input-box" placeholder="如果自动检测失败，可以在此粘贴完整回复内容..." rows="3"></textarea>
+        <button class="manual-send-btn">发送到 MCP</button>
+      </div>
     `;
 
         // 为新的 details-toggle 元素绑定事件
@@ -471,6 +579,16 @@ export class StatusPanel {
                 toggle.nextElementSibling.classList.toggle('expanded');
             });
         }
+        
+        // 重新绑定输入框相关事件
+        const showInputBtn = panelBody.querySelector('.show-input-btn');
+        showInputBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleManualInput();
+        });
+        
+        const manualSendBtn = panelBody.querySelector('.manual-send-btn');
+        manualSendBtn.addEventListener('click', () => this.handleManualSend());
 
         if (!this.isVisible) {
             this.show();
