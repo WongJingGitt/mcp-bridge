@@ -9,6 +9,7 @@ MCP Bridge 是一个浏览器扩展，通过本地桥接服务为网页版大语
 - 🌐 **多平台支持**：原生支持 DeepSeek、腾讯元宝、通义千问、ChatGPT、豆包、Grok 等平台
 - 📦 **分层工具发现**：通过服务(Service)和工具(Tool)两层结构管理工具集
 - 🎨 **可视化状态**：实时显示工具调用状态和结果
+- 🎯 **多路径注入**：支持同时向请求体的多个字段注入 System Prompt
 - 🛡️ **四层保障机制**：
   - API 解析 - 从网络请求中实时解析（主要方案）
   - UI DOM 解析 - 从页面内容中提取（自动兜底）
@@ -273,6 +274,7 @@ last.innerText
 - [API 配置完全指南](docs/API_CONFIG_GUIDE.md) - api_list.json 配置说明
 - [响应解析配置指南](docs/RESPONSE_CONFIG_GUIDE.md) - 响应解析和过滤规则
 - [错误处理机制](docs/ERROR_HANDLING.md) - 错误处理流程和调试技巧
+- [多路径注入示例](docs/MULTI_PROMPTPATH_EXAMPLE.md) - 多字段同时注入 Prompt
 
 ### 特性文档
 - [重新检测功能](docs/REDETECT_FEATURE.md) - 断点续传实现说明
