@@ -87,13 +87,19 @@ function handleInjectorMessage(data) {
             const lastWarning = sessionStorage.getItem('mcp_context_warning');
             const now = Date.now();
             if (!lastWarning || now - parseInt(lastWarning) > 60000) { // 1分钟内只提示一次
-
                 sessionStorage.setItem('mcp_context_warning', now.toString());
                 console.error(
-                    '%c[MCP Bridge] 扩展已重新加载，请刷新页面以恢复功能',
+                    '%c[MCP Bridge] 插件已重新加载，请刷新页面以恢复功能',
                     'color: #ff0000; font-size: 14px; font-weight: bold;'
                 );
-                alert('扩展已重新加载，请刷新页面以恢复功能')
+                
+                // 在浮窗显示错误提示
+                if (statusPanel) {
+                    statusPanel.update({
+                        status: 'ERROR',
+                        message: '插件已重新加载，请刷新页面以恢复功能'
+                    });
+                }
             }
         }
         
