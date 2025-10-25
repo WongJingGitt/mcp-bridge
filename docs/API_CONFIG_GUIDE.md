@@ -91,6 +91,206 @@
 "defaultAlwaysInject": false
 ```
 
+## Prompt 注入配置
+
+用于配置如何将 MCP System Prompt 注入到请求体中。
+
+### promptPath (必需)
+
+**类型:** `string` | `string[]`  
+**说明:** 请求体中提示词字段的路径,支持单个路径或多个路径
+
+**单路径示例:**
+```json
+{
+  "promptPath": "prompt"
+}
+```
+
+**多路径示例:**
+```json
+{
+  "promptPath": ["prompt", "systemPrompt", "messages.0.content"]
+}
+```
+
+**路径格式:**
+- `"prompt"` - 顶层字段 `body.prompt`
+- `"messages.0.content"` - 嵌套路径 `body.messages[0].content`
+- `"messages.0.content.parts.0"` - 深层嵌套 `body.messages[0].content.parts[0]`
+
+**使用场景:**
+
+**场景 1: 单个字段 (常见)**
+```json
+// 请求体:
+{
+  "prompt": "用户输入"
+}
+
+// 配置:
+"promptPath": "prompt"
+
+// 注入后:
+{
+  "prompt": "# MCP System Prompt\n...\n\n---\n\n用户输入"
+}
+```
+
+**场景 2: 多个字段 (同时注入)**
+
+某些平台将同一内容分散在多个字段,需要同时注入:
+
+```json
+// 请求体:
+{
+  "prompt": "用户输入",
+  "systemPrompt": "默认系统提示",
+  "messages": [
+    {
+      "role": "user",
+      "content": "用户输入"
+    }
+  ]
+}
+
+// 配置:
+"promptPath": ["prompt", "systemPrompt", "messages.0.content"]
+
+// 注入后: 三个字段都会被添加 MCP System Prompt
+{
+  "prompt": "# MCP System Prompt\n...\n\n---\n\n用户输入",
+  "systemPrompt": "# MCP System Prompt\n...\n\n---\n\n默认系统提示",
+  "messages": [
+    {
+      "role": "user",
+      "content": "# MCP System Prompt\n...\n\n---\n\n用户输入"
+    }
+  ]
+}
+```
+
+**场景 3: 嵌套数组**
+
+ChatGPT 等平台使用嵌套结构:
+
+```json
+// 请求体:
+{
+  "messages": [
+    {
+      "content": {
+        "parts": ["用户输入"]
+      }
+    }
+  ]
+}
+
+// 配置:
+"promptPath": "messages.0.content.parts.0"
+
+// 注入后:
+{
+  "messages": [
+    {
+      "content": {
+        "parts": ["# MCP System Prompt\n...\n\n---\n\n用户输入"]
+      }
+    }
+  ]
+}
+```
+
+**场景 4: 根对象是数组**
+
+某些平台的请求体本身就是一个数组:
+
+```json
+// 请求体 (根对象是数组):
+[
+  {
+    "content": "{\"text\":\"给我讲个笑话吧。\"}",
+    "content_type": 2001,
+    "attachments": [],
+    "references": []
+  }
+]
+
+// 配置:
+{
+  "promptPath": "0.content.text",
+  "isJsonString": true
+}
+
+// 处理流程:
+// 1. 访问根数组的第一个元素: arr[0]
+// 2. 访问 content 字段: arr[0].content (这是一个 JSON 字符串)
+// 3. 因为 isJsonString: true, 解析 content 为对象
+// 4. 访问解析后的 text 字段并修改
+// 5. 重新序列化为 JSON 字符串写回
+
+// 注入后:
+[
+  {
+    "content": "{\"text\":\"# MCP System Prompt\\n...\\n\\n---\\n\\n给我讲个笑话吧。\"}",
+    "content_type": 2001,
+    "attachments": [],
+    "references": []
+  }
+]
+```
+
+**路径解析说明:**
+- `0` - 访问数组的第一个元素
+- `0.content` - 访问第一个元素的 content 字段
+- `0.content.text` - 结合 `isJsonString: true`,访问 JSON 字符串内部的 text 字段
+
+### isJsonString (可选)
+
+**类型:** `boolean`  
+**默认值:** `false`  
+**说明:** 目标字段是否是 JSON 字符串形式 (双层编码)
+
+**示例:**
+
+某些平台 (如豆包) 的请求体中,某些字段本身是 JSON 字符串:
+
+```json
+// 请求体:
+{
+  "messages": [
+    {
+      "content": "{\"text\":\"用户输入\"}"  // 注意:这是一个字符串,不是对象
+    }
+  ]
+}
+
+// 配置:
+{
+  "promptPath": "messages.0.content.text",
+  "isJsonString": true
+}
+
+// 处理流程:
+// 1. 解析 messages[0].content 字符串为对象
+// 2. 修改对象中的 text 字段
+// 3. 重新序列化为 JSON 字符串
+// 4. 写回 messages[0].content
+
+// 注入后:
+{
+  "messages": [
+    {
+      "content": "{\"text\":\"# MCP System Prompt\\n...\\n\\n---\\n\\n用户输入\"}"
+    }
+  ]
+}
+```
+
+**何时使用:**
+- 当 `isJsonString: false` 时,直接修改对象属性
+- 当 `isJsonString: true` 时,先解析 JSON 字符串,修改后再序列化
+
 ## 响应解析配置 (response)
 
 用于从 API 响应中提取 AI 回复内容。
@@ -519,6 +719,40 @@ console.log('内容:', content?.innerText);
   }
 }
 ```
+
+### 多路径注入示例
+
+某些平台将同一内容存储在多个字段:
+
+```json
+{
+  "name": "example_platform",
+  "hostname": "example.com",
+  "label": "示例平台",
+  "api": ["/api/chat"],
+  "promptPath": [
+    "prompt",
+    "systemPrompt",
+    "messages.0.content"
+  ],
+  "isJsonString": false,
+  "enabled": true,
+  "response": {
+    "type": "sse",
+    "format": "data: {json}",
+    "contentPaths": ["content"]
+  },
+  "input": {
+    "selector": "textarea",
+    "submitKey": "Enter"
+  }
+}
+```
+
+**说明:**
+- 使用数组配置多个路径
+- 每次请求会同时在三个字段注入 MCP System Prompt
+- 适用于后端需要多个字段保持一致的场景
 
 ## 常见问题
 
