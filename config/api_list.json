@@ -56,7 +56,7 @@
       "selector": "textarea, [contenteditable='true']",
       "submitKey": "Enter",
       "submitModifiers": [],
-      "submitDelay": 1600
+      "submitDelay": 2000
     }
   },
   {
