@@ -427,7 +427,7 @@ mcp_bridge_server/             # 桥接服务
 | 文档 | 说明 |
 |------|------|
 | [README.md](README.md) | 项目总览和快速开始（本文档） |
-| [桥接服务 README](../mcp_bridge_server/README.md) | 服务端文档和 API 说明 |
+| [桥接服务 README](https://github.com/WongJingGitt/mcp_bridge_server/blob/master/README.md) | 服务端文档和 API 说明 |
 | [架构设计文档](docs/ARCHITECTURE.md) | 系统架构与技术选型 |
 | [开发者指南](docs/DEVELOPER_GUIDE.md) | 代码结构与开发指南 |
 | [文档索引](docs/INDEX.md) | 完整文档导航和使用场景指引 |
@@ -593,7 +593,7 @@ SOFTWARE.
 - [Model Context Protocol](https://modelcontextprotocol.io) - 为工具生态系统提供了标准化协议
 - [Chrome Extension API](https://developer.chrome.com/docs/extensions/) - 强大的浏览器扩展能力
 - [Google Gemini](https://gemini.google.com) - 协助设计了项目的初始架构，奠定了坚实的基础 🏗️
-- [Claude Code](https://claude.ai) - 本项目 99% 的代码由 AI 完成，证明了人类确实可以躺平了 🤖💤
+- [Claude Code](https://claude.ai) - 本项目 99% 的代码由 AI 完成(包括这段话也是🤭)，证明了人类确实可以躺平了 🤖💤
 - 所有贡献者和用户 - 感谢你们的支持和反馈！
 
 ---
