@@ -1,0 +1,65 @@
+{
+  "manifest_version": 3,
+  "name": "MCP Bridge",
+  "version": "1.0.0",
+  "description": "通过本地桥接服务，为网页大模型提供强大的MCP工具调用能力。",
+  "permissions": [
+    "storage",
+    "scripting",
+    "webNavigation"
+  ],
+  "host_permissions": [
+    "http://localhost:3849/*",
+    "https://chat.deepseek.com/*",
+    "https://chatgpt.com/*",
+    "https://yuanbao.tencent.com/*",
+    "https://www.tongyi.com/*",
+    "https://www.doubao.com/*",
+    "https://grok.com/*"
+  ],
+  "background": {
+    "service_worker": "scripts/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": [
+        "scripts/page_world/fetchhook.min.js",
+        "scripts/page_world/ajaxhook.min.js",
+        "scripts/page_world/injector.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["scripts/content_script.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "ui/status_panel.css",
+        "ui/status_panel.js",
+        "modules/input_injector.js"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "MCP Bridge 控制中心",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png"
+    }
+  },
+  "options_page": "options/options.html",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
+}

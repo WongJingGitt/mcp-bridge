@@ -1,0 +1,526 @@
+/*
+ * status_panel.css
+ * 现代化设计 - 毛玻璃效果、渐变色、流畅动画
+ */
+
+:host {
+    all: initial;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+}
+
+.mcp-status-panel {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 380px;
+    max-width: calc(100vw - 40px);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 250, 252, 0.95) 100%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 16px;
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.08),
+        0 2px 8px rgba(0, 0, 0, 0.04),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    z-index: 2147483647;
+    color: #1f2328;
+    font-size: 14px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+}
+
+.mcp-status-panel.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+.mcp-status-panel.collapsed .panel-body {
+    max-height: 0;
+    padding: 0;
+    opacity: 0;
+}
+
+/* 头部设计 */
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px;
+    background: linear-gradient(135deg, rgba(9, 105, 218, 0.05) 0%, rgba(88, 166, 255, 0.05) 100%);
+    border-bottom: 1px solid rgba(9, 105, 218, 0.1);
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s ease;
+}
+
+.panel-header:hover {
+    background: linear-gradient(135deg, rgba(9, 105, 218, 0.08) 0%, rgba(88, 166, 255, 0.08) 100%);
+}
+
+.panel-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1f2328;
+    letter-spacing: -0.01em;
+}
+
+.panel-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.panel-action-btn {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    color: #6e7781;
+}
+
+.panel-action-btn:hover {
+    background: rgba(9, 105, 218, 0.1);
+    color: #0969da;
+    transform: scale(1.05);
+}
+
+.panel-action-btn .action-icon {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.3s ease;
+}
+
+.panel-action-btn.refresh-btn:hover .action-icon {
+    transform: rotate(180deg);
+}
+
+.panel-title-icon {
+    width: 20px;
+    height: 20px;
+    filter: drop-shadow(0 1px 2px rgba(9, 105, 218, 0.2));
+    animation: iconPulse 2s ease-in-out infinite;
+}
+
+@keyframes iconPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.panel-toggle-btn {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    background: rgba(9, 105, 218, 0.08);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.panel-toggle-btn:hover {
+    background: rgba(9, 105, 218, 0.15);
+    transform: scale(1.05);
+}
+
+.toggle-icon {
+    width: 16px;
+    height: 16px;
+    color: #0969da;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.mcp-status-panel.collapsed .toggle-icon {
+    transform: rotate(180deg);
+}
+
+/* 主体区域 */
+.panel-body {
+    padding: 18px;
+    max-height: 400px;
+    overflow-y: auto;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.panel-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.panel-body::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.02);
+    border-radius: 3px;
+}
+
+.panel-body::-webkit-scrollbar-thumb {
+    background: rgba(9, 105, 218, 0.2);
+    border-radius: 3px;
+    transition: background 0.2s;
+}
+
+.panel-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(9, 105, 218, 0.35);
+}
+
+/* 状态行 */
+.status-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.status-icon {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    margin-top: 2px;
+}
+
+.status-text {
+    flex: 1;
+    color: #1f2328;
+    font-size: 14px;
+    line-height: 1.6;
+    word-break: break-word;
+}
+
+/* 加载动画 */
+.spinner {
+    width: 20px;
+    height: 20px;
+    border: 2.5px solid rgba(9, 105, 218, 0.1);
+    border-top-color: #0969da;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    box-shadow: 0 0 8px rgba(9, 105, 218, 0.3);
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* 不同状态的样式 */
+.mcp-status-panel[data-state="EXECUTING"] .status-icon {
+    color: #0969da;
+}
+
+.mcp-status-panel[data-state="SUCCESS"] .status-icon::before {
+    content: "✓";
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    background: linear-gradient(135deg, #1a7f37 0%, #2da44e 100%);
+    color: white;
+    border-radius: 50%;
+    font-size: 14px;
+    font-weight: bold;
+    box-shadow: 0 2px 8px rgba(26, 127, 55, 0.3);
+    animation: successPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes successPop {
+    0% { transform: scale(0); }
+    60% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.mcp-status-panel[data-state="ERROR"] .status-icon::before {
+    content: "✕";
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    background: linear-gradient(135deg, #cf222e 0%, #f85149 100%);
+    color: white;
+    border-radius: 50%;
+    font-size: 14px;
+    font-weight: bold;
+    box-shadow: 0 2px 8px rgba(207, 34, 46, 0.3);
+    animation: errorShake 0.4s ease-in-out;
+}
+
+@keyframes errorShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+}
+
+/* 详情区域 */
+.details-section {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(208, 215, 222, 0.4);
+}
+
+.details-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: rgba(9, 105, 218, 0.04);
+    border: 1px solid rgba(9, 105, 218, 0.1);
+    border-radius: 8px;
+    color: #0969da;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+}
+
+.details-toggle:hover {
+    background: rgba(9, 105, 218, 0.08);
+    border-color: rgba(9, 105, 218, 0.2);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(9, 105, 218, 0.1);
+}
+
+.details-toggle::before {
+    content: "▶";
+    font-size: 10px;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.details-toggle.expanded::before {
+    transform: rotate(90deg);
+}
+
+.details-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.details-content.expanded {
+    max-height: 300px;
+    margin-top: 10px;
+}
+
+.details-content pre {
+    margin: 0;
+    padding: 14px;
+    background: rgba(246, 248, 250, 0.8);
+    border: 1px solid rgba(208, 215, 222, 0.3);
+    border-radius: 8px;
+    color: #1f2328;
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.details-content pre::-webkit-scrollbar {
+    height: 6px;
+}
+
+.details-content pre::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.02);
+    border-radius: 3px;
+}
+
+.details-content pre::-webkit-scrollbar-thumb {
+    background: rgba(9, 105, 218, 0.2);
+    border-radius: 3px;
+}
+
+/* 暗色模式 */
+@media (prefers-color-scheme: dark) {
+    .mcp-status-panel {
+        background: linear-gradient(135deg, rgba(22, 27, 34, 0.95) 0%, rgba(13, 17, 23, 0.95) 100%);
+        border: 1px solid rgba(48, 54, 61, 0.8);
+        box-shadow: 
+            0 8px 32px rgba(0, 0, 0, 0.4),
+            0 2px 8px rgba(0, 0, 0, 0.2),
+            inset 0 1px 0 rgba(110, 118, 129, 0.2);
+    }
+    
+    .panel-header {
+        background: linear-gradient(135deg, rgba(88, 166, 255, 0.08) 0%, rgba(31, 111, 235, 0.08) 100%);
+        border-bottom: 1px solid rgba(48, 54, 61, 0.6);
+    }
+    
+    .panel-header:hover {
+        background: linear-gradient(135deg, rgba(88, 166, 255, 0.12) 0%, rgba(31, 111, 235, 0.12) 100%);
+    }
+    
+    .panel-title {
+        color: #e6edf3;
+    }
+    
+    .panel-action-btn {
+        color: #8b949e;
+    }
+    
+    .panel-action-btn:hover {
+        background: rgba(88, 166, 255, 0.15);
+        color: #58a6ff;
+    }
+    
+    .panel-toggle-btn {
+        background: rgba(88, 166, 255, 0.12);
+    }
+    
+    .panel-toggle-btn:hover {
+        background: rgba(88, 166, 255, 0.2);
+    }
+    
+    .toggle-icon {
+        color: #58a6ff;
+    }
+    
+    .status-text {
+        color: #c9d1d9;
+    }
+    
+    .details-toggle {
+        background: rgba(88, 166, 255, 0.08);
+        border-color: rgba(48, 54, 61, 0.8);
+        color: #58a6ff;
+    }
+    
+    .details-toggle:hover {
+        background: rgba(88, 166, 255, 0.12);
+        border-color: rgba(88, 166, 255, 0.3);
+    }
+    
+    .details-content pre {
+        background: rgba(13, 17, 23, 0.8);
+        border-color: rgba(48, 54, 61, 0.6);
+        color: #c9d1d9;
+    }
+    
+    .panel-body::-webkit-scrollbar-thumb {
+        background: rgba(88, 166, 255, 0.3);
+    }
+    
+    .panel-body::-webkit-scrollbar-thumb:hover {
+        background: rgba(88, 166, 255, 0.45);
+    }
+}
+
+/* 手动输入区域 */
+.manual-input-section {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(31, 35, 40, 0.08);
+}
+
+.manual-input-box {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid rgba(31, 35, 40, 0.15);
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+    resize: vertical;
+    min-height: 60px;
+    max-height: 200px;
+    background: rgba(255, 255, 255, 0.6);
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.manual-input-box:focus {
+    outline: none;
+    border-color: #0969da;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
+}
+
+.manual-input-box::placeholder {
+    color: #57606a;
+}
+
+.manual-send-btn {
+    margin-top: 8px;
+    width: 100%;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #0969da 0%, #0550ae 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(9, 105, 218, 0.2);
+}
+
+.manual-send-btn:hover {
+    background: linear-gradient(135deg, #0860ca 0%, #044a9e 100%);
+    box-shadow: 0 2px 6px rgba(9, 105, 218, 0.3);
+    transform: translateY(-1px);
+}
+
+.manual-send-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(9, 105, 218, 0.2);
+}
+
+/* 暗黑模式下的手动输入区域 */
+@media (prefers-color-scheme: dark) {
+    .manual-input-section {
+        border-top-color: rgba(48, 54, 61, 0.8);
+    }
+    
+    .manual-input-box {
+        background: rgba(13, 17, 23, 0.6);
+        border-color: rgba(48, 54, 61, 0.8);
+        color: #c9d1d9;
+    }
+    
+    .manual-input-box:focus {
+        background: rgba(13, 17, 23, 0.9);
+        border-color: #58a6ff;
+        box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+    }
+    
+    .manual-input-box::placeholder {
+        color: #8b949e;
+    }
+    
+    .manual-send-btn {
+        background: linear-gradient(135deg, #1f6feb 0%, #1158c7 100%);
+    }
+    
+    .manual-send-btn:hover {
+        background: linear-gradient(135deg, #2672f3 0%, #1a63d7 100%);
+    }
+}

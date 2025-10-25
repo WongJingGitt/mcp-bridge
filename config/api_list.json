@@ -1,0 +1,146 @@
+[
+  {
+    "name": "deepseek",
+    "hostname": "chat.deepseek.com",
+    "label": "DeepSeek官网",
+    "api": ["/api/v0/chat/completion", "/api/v0/chat/edit_message"],
+    "promptPath": "prompt",
+    "isJsonString": false,
+    "enabled": true,
+    "defaultAlwaysInject": false,
+    "response": {
+      "type": "sse",
+      "format": "data: {json}",
+      "contentPaths": ["v"],
+      "filterRules": {
+        "pathField": "p",
+        "excludePatterns": ["fragments/0/content"]
+      }
+    },
+    "uiParsing": {
+      "enabled": true,
+      "priority": "ui",
+      "messageContainer": ".ds-message",
+      "messageIndex": -1,
+      "contentSelector": ".ds-markdown"
+    },
+    "input": {
+      "selector": "textarea, [contenteditable='true']",
+      "submitKey": "Enter",
+      "submitModifiers": [],
+      "submitDelay": 1600
+    }
+  },
+  {
+    "name": "yuanbao",
+    "hostname": "yuanbao.tencent.com",
+    "label": "腾讯元宝",
+    "api": ["/api/chat/"],
+    "promptPath": "prompt",
+    "isJsonString": false,
+    "enabled": true,
+    "defaultAlwaysInject": false,
+    "response": {
+      "type": "sse",
+      "format": "data: {json}",
+      "contentPaths": ["content", "delta", "text"]
+    },
+    "uiParsing": {
+      "enabled": true,
+      "priority": "ui",
+      "messageContainer": ".hyc-content-md",
+      "messageIndex": -1,
+      "contentSelector": ".hyc-common-markdown"
+    },
+    "input": {
+      "selector": "textarea, [contenteditable='true']",
+      "submitKey": "Enter",
+      "submitModifiers": [],
+      "submitDelay": 1600
+    }
+  },
+  {
+    "name": "tongyi",
+    "hostname": "www.tongyi.com",
+    "label": "通义千问",
+    "api": ["/dialog/conversation"],
+    "promptPath": "contents.0.content",
+    "isJsonString": false,
+    "enabled": true,
+    "defaultAlwaysInject": false,
+    "response": {
+      "type": "sse",
+      "format": "data: {json}",
+      "contentPaths": ["content", "text", "delta"]
+    },
+    "input": {
+      "selector": "textarea, [contenteditable='true']",
+      "submitKey": "Enter",
+      "submitModifiers": [],
+      "submitDelay": 1600
+    }
+  },
+  {
+    "name": "chatgpt",
+    "hostname": "chatgpt.com",
+    "label": "ChatGPT",
+    "api": ["/backend-api/conversation", "/backend-anon/conversation", "/backend-api/f/conversation"],
+    "promptPath": "messages.0.content.parts.0",
+    "isJsonString": false,
+    "enabled": true,
+    "defaultAlwaysInject": false,
+    "response": {
+      "type": "sse",
+      "format": "data: {json}",
+      "contentPaths": ["message.content.parts.0", "delta.content", "content"]
+    },
+    "input": {
+      "selector": "#prompt-textarea",
+      "submitKey": "Enter",
+      "submitModifiers": [],
+      "submitDelay": 1600
+    }
+  },
+  {
+    "name": "doubao",
+    "hostname": "www.doubao.com",
+    "label": "豆包",
+    "api": ["/samantha/chat/completion"],
+    "promptPath": "messages.0.content.text",
+    "isJsonString": true,
+    "enabled": true,
+    "defaultAlwaysInject": false,
+    "response": {
+      "type": "sse",
+      "format": "data: {json}",
+      "contentPaths": ["choices.0.delta.content", "delta.content", "content"]
+    },
+    "input": {
+      "selector": "textarea, [contenteditable='true']",
+      "submitKey": "Enter",
+      "submitModifiers": [],
+      "submitDelay": 1600
+    }
+  },
+  {
+    "name": "grok",
+    "hostname": "grok.com",
+    "label": "Grok",
+    "api": ["/rest/app-chat/conversations"],
+    "promptPath": "message",
+    "isJsonString": false,
+    "enabled": true,
+    "defaultAlwaysInject": false,
+    "response": {
+      "type": "sse",
+      "format": "data: {json}",
+      "contentPaths": ["content", "text", "message"]
+    },
+    "input": {
+      "selector": "textarea, [contenteditable='true']",
+      "submitKey": "Enter",
+      "submitModifiers": [],
+      "submitDelay": 1600
+    }
+  }
+]

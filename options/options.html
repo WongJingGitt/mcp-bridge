@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Bridge - 设置</title>
+    <link rel="stylesheet" href="options.css">
+</head>
+<body>
+<div class="container">
+    <!-- 左侧主导航 -->
+    <aside class="main-nav">
+        <div class="nav-group">
+            <h2 class="nav-title">设置</h2>
+            <ul class="nav-list">
+                <li class="nav-item active" data-view="sites-view">🌐 站点管理</li>
+                <li class="nav-item" data-view="service-manager-view">🔧 服务管理</li>
+                <li class="nav-item" data-view="service-config-view">📝 服务配置 (JSON)</li>
+            </ul>
+        </div>
+        <div class="nav-footer">
+            <span id="version">MCP Bridge v1.0.0</span>
+        </div>
+    </aside>
+
+    <!-- 右侧内容视图容器 -->
+    <div class="main-view-container">
+
+        <!-- 视图 1: 站点管理 -->
+        <main id="sites-view" class="main-view active">
+            <header class="view-header">
+                <h1>站点管理</h1>
+                <p>管理插件在各个网站上的行为，例如是否默认启用“每次都注入”模式。</p>
+            </header>
+            <div class="view-panel">
+                <ul id="siteList" class="site-list">
+                    <!-- 站点列表将由 JS 动态生成 -->
+                </ul>
+            </div>
+        </main>
+
+        <!-- 视图 2: 服务管理 -->
+        <main id="service-manager-view" class="main-view">
+            <header class="view-header">
+                <h1>服务管理</h1>
+                <p>通过下方的开关快速启用或禁用配置文件中的各项服务。此操作会自动保存并重载服务。</p>
+            </header>
+            <div class="view-panel">
+                <ul id="serviceToggleList" class="service-toggle-list">
+                    <!-- 服务开关将由 JS 动态生成 -->
+                </ul>
+            </div>
+        </main>
+
+        <!-- 视图 3: 服务配置 (JSON) -->
+        <main id="service-config-view" class="main-view">
+            <header class="view-header">
+                <h1>服务配置 (mcp-config.json)</h1>
+                <p>为高级用户提供直接编辑 JSON 配置文件的功能。手动保存后将自动触发服务重载。</p>
+            </header>
+            <div class="view-panel config-editor-container">
+                <textarea id="configEditor" spellcheck="false" placeholder="正在从本地服务加载配置..."></textarea>
+                <div class="config-actions">
+                    <button id="reloadConfigButton" class="button secondary">🔄 重新加载</button>
+                    <button id="saveConfigButton" class="button primary" disabled>💾 保存并重载服务</button>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script src="options.js"></script>
+</body>
+</html>

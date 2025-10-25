@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Bridge 控制中心</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<div class="container">
+
+    <header class="header">
+        <h1 class="title">
+            <svg class="title-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14.4 2.126A5.4 5.4 0 0 0 9.6 0H5.4A5.4 5.4 0 0 0 0 5.4v4.2a5.4 5.4 0 0 0 2.126 4.2L11.4 23.1a1.8 1.8 0 0 0 2.546 0l7.925-7.924a1.8 1.8 0 0 0 0-2.546L14.4 2.126ZM5.4 9a1.8 1.8 0 1 1 0-3.6 1.8 1.8 0 0 1 0 3.6Z" fill="#0969da"></path></svg>
+            MCP Bridge
+        </h1>
+        <p class="subtitle">为网页大模型提供工具调用能力</p>
+    </header>
+
+    <section class="control-section">
+        <div class="control-item">
+            <span class="control-label">启用 MCP 功能</span>
+            <label class="switch">
+                <input type="checkbox" id="globalEnableToggle">
+                <span class="slider"></span>
+            </label>
+        </div>
+        <div class="control-item">
+            <span class="control-label">本地服务状态</span>
+            <div id="bridgeServiceStatus" class="status-indicator">
+                <div id="statusDot" class="status-dot"></div>
+                <span id="statusText" class="status-text">检查中...</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- 快速操作区域 -->
+    <section class="quick-actions-section">
+        <h3 class="section-title">⚡ 快速操作</h3>
+        <button id="refreshPromptButton" class="action-button primary">
+            <svg class="button-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4 12a8 8 0 018-8V2.5a.5.5 0 01.854-.354l3.5 3.5a.5.5 0 010 .708l-3.5 3.5A.5.5 0 0112 9.5V8a6 6 0 00-6 6 6 6 0 006 6 6 6 0 006-6h2a8 8 0 01-8 8 8 8 0 01-8-8z" fill="currentColor"/>
+            </svg>
+            <span>刷新 System Prompt</span>
+        </button>
+        <div class="control-item compact">
+            <span class="control-label">
+                <span class="label-icon">🚀</span>
+                <span>刷新后自动发送</span>
+            </span>
+            <label class="switch">
+                <input type="checkbox" id="autoSubmitToggle">
+                <span class="slider"></span>
+            </label>
+        </div>
+        <p class="hint-text">💡 关闭自动发送时，可在输入框补充问题后手动发送</p>
+    </section>
+
+    <a href="#" id="openOptionsButton" class="button">
+        ⚙️ 打开详细设置
+    </a>
+
+    <footer class="footer">
+        <p>在设置页面中管理 MCP 服务和站点。</p>
+    </footer>
+
+</div>
+<script src="popup.js"></script>
+</body>
+</html>

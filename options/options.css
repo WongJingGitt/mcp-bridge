@@ -1,0 +1,115 @@
+/*
+ * options.css (Upgraded for separate Service Manager view)
+ */
+
+:root {
+    --bg-color: #f7f7f8;
+    --panel-color: #ffffff;
+    --text-color: #1f2328;
+    --text-color-muted: #6e7781;
+    --accent-color: #0969da;
+    --accent-color-hover: #085ec5;
+    --border-color: #d0d7de;
+    --danger-color: #cf222e;
+    --danger-hover-color: #a40e26;
+    --shadow-color: rgba(140, 149, 159, 0.15);
+    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --border-radius: 8px;
+    --transition-speed: 0.2s;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    line-height: 1.6;
+    overflow: hidden;
+}
+
+.container {
+    display: flex;
+    gap: 24px;
+    padding: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+    height: calc(100vh - 48px);
+    box-sizing: border-box;
+}
+
+/* --- 左侧主导航 --- */
+.main-nav {
+    flex: 0 0 220px;
+    background-color: var(--panel-color);
+    border-radius: var(--border-radius);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 4px 12px var(--shadow-color);
+}
+.nav-title { font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--text-color-muted); padding: 0 8px 8px; margin: 0; }
+.nav-list { list-style: none; padding: 0; margin: 0; }
+.nav-item { padding: 12px 16px; margin-bottom: 4px; border-radius: 6px; cursor: pointer; font-weight: 500; transition: background-color var(--transition-speed), color var(--transition-speed); }
+.nav-item:hover { background-color: #eef1f4; }
+.nav-item.active { background-color: var(--accent-color); color: white; font-weight: 600; }
+.nav-footer { font-size: 12px; color: var(--text-color-muted); text-align: center; padding-top: 16px; border-top: 1px solid var(--border-color); }
+
+/* --- 右侧视图容器 --- */
+.main-view-container { flex-grow: 1; position: relative; min-width: 0; }
+.main-view { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, transform 0.3s ease; transform: translateY(10px); display: flex; flex-direction: column; gap: 24px; }
+.main-view.active { opacity: 1; visibility: visible; transform: translateY(0); }
+
+/* --- 视图头部 --- */
+.view-header { background: var(--panel-color); padding: 20px 24px; border-radius: var(--border-radius); box-shadow: 0 4px 12px var(--shadow-color); flex-shrink: 0; }
+.view-header h1 { font-size: 24px; margin: 0 0 4px 0; }
+.view-header p { font-size: 14px; color: var(--text-color-muted); margin: 0; }
+
+/* --- 视图内容面板 --- */
+.view-panel { background: var(--panel-color); border-radius: var(--border-radius); box-shadow: 0 4px 12px var(--shadow-color); flex-grow: 1; display: flex; flex-direction: column; padding: 20px; overflow: hidden; }
+
+/* --- 站点管理列表 --- */
+.site-list { list-style: none; padding: 0 10px 0 0; margin: 0; flex-grow: 1; overflow-y: auto; }
+.site-item { display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid #eef1f4; }
+.site-item:last-child { border-bottom: none; }
+.site-info { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; }
+.site-name { font-weight: 600; }
+.site-hostname { font-size: 12px; color: var(--text-color-muted); }
+.site-actions { display: flex; align-items: center; gap: 16px; margin-left: auto; flex-shrink: 0; }
+.site-actions .action-label { font-size: 13px; color: var(--text-color-muted); }
+
+/* --- 服务管理列表 --- */
+.service-toggle-list { list-style: none; padding: 0 10px 0 0; margin: 0; flex-grow: 1; overflow-y: auto; }
+.service-toggle-item { display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid #eef1f4; }
+.service-toggle-item:last-child { border-bottom: none; }
+.service-info { flex-grow: 1; min-width: 0; }
+.service-name { font-weight: 600; }
+.service-description { font-size: 12px; color: var(--text-color-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.service-actions { margin-left: auto; flex-shrink: 0; }
+
+/* --- 服务配置 (JSON) --- */
+.config-editor-container { height: 100%; }
+#configEditor { flex-grow: 1; border: 1px solid var(--border-color); border-radius: 6px; font-family: 'Courier New', Courier, monospace; font-size: 14px; padding: 10px; resize: none; min-height: 100px; }
+#configEditor:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.2); }
+.config-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 16px; flex-shrink: 0; }
+
+/* --- 通用组件 --- */
+.switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px; }
+.slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+input:checked + .slider { background-color: var(--accent-color); }
+input:checked + .slider:before { transform: translateX(20px); }
+.button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; border: 1px solid transparent; transition: all var(--transition-speed) ease-out; }
+.button.primary { background-color: var(--accent-color); color: white; }
+.button.primary:hover { background-color: var(--accent-color-hover); }
+.button.secondary { background-color: #f6f8fa; color: var(--text-color); border-color: var(--border-color); }
+.button.secondary:hover { border-color: var(--text-color-muted); background-color: #f3f5f7; }
+.button:disabled { opacity: 0.6; cursor: not-allowed; }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 12px 24px; background: #323232; color: white; border-radius: 6px; z-index: 2001; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: toast-in 0.3s ease-out, toast-out 0.3s ease-in 2.7s; }
+@keyframes toast-in { from { transform: translate(-50%, 20px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+@keyframes toast-out { from { opacity: 1; } to { opacity: 0; } }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background-color: #dde1e6; border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background-color: #cfd5dc; }
