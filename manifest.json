@@ -23,9 +23,16 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": [
+        "https://chat.deepseek.com/*",
+        "https://chatgpt.com/*",
+        "https://yuanbao.tencent.com/*",
+        "https://www.tongyi.com/*",
+        "https://www.doubao.com/*",
+        "https://grok.com/*"
+      ],
       "js": [
-        "scripts/page_world/fetchhook.min.js",
+        "scripts/page_world/fetchhook.js",
         "scripts/page_world/ajaxhook.min.js",
         "scripts/page_world/injector.js"
       ],
@@ -33,7 +40,14 @@
       "world": "MAIN"
     },
     {
-      "matches": ["<all_urls>"],
+      "matches": [
+        "https://chat.deepseek.com/*",
+        "https://chatgpt.com/*",
+        "https://yuanbao.tencent.com/*",
+        "https://www.tongyi.com/*",
+        "https://www.doubao.com/*",
+        "https://grok.com/*"
+      ],
       "js": ["scripts/content_script.js"],
       "run_at": "document_start"
     }
@@ -45,7 +59,14 @@
         "ui/status_panel.js",
         "modules/input_injector.js"
       ],
-      "matches": ["<all_urls>"]
+      "matches": [
+        "https://chat.deepseek.com/*",
+        "https://chatgpt.com/*",
+        "https://yuanbao.tencent.com/*",
+        "https://www.tongyi.com/*",
+        "https://www.doubao.com/*",
+        "https://grok.com/*"
+      ]
     }
   ],
   "action": {
