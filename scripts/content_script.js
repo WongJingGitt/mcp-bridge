@@ -298,4 +298,12 @@ function handlePanelMessage(data) {
     }
 }
 
-main().catch(console.error);
+// 确保 DOM 完全加载后再执行
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        main().catch(console.error);
+    });
+} else {
+    // DOM 已经加载完成
+    main().catch(console.error);
+}
