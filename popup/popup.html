@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MCP Bridge 控制中心</title>
     <link rel="stylesheet" href="popup.css">
+    <script src="../modules/compareVersion.js"></script>
 </head>
 <body>
 <div class="container">
@@ -62,9 +63,12 @@
 
     <footer class="footer">
         <p>在设置页面中管理 MCP 服务和站点。</p>
+        <p id="newVersionText" class="version-hint"></p>
     </footer>
 
 </div>
+<!-- Toast 容器 -->
+<div id="toastContainer" class="toast-container"></div>
 <script src="popup.js"></script>
 </body>
 </html>

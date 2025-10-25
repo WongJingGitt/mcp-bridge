@@ -470,3 +470,106 @@ input:focus + .slider {
 .container > *:nth-child(3) { animation-delay: 0.15s; }
 .container > *:nth-child(4) { animation-delay: 0.2s; }
 .container > *:nth-child(5) { animation-delay: 0.25s; }
+
+/* 版本提示样式 */
+.version-hint {
+    font-size: 11px;
+    color: var(--text-color-muted);
+    margin-top: 12px !important;
+    padding: 4px 8px;
+    background: rgba(9, 105, 218, 0.05);
+    border-radius: 6px;
+    display: inline-block;
+    transition: all 0.3s ease;
+}
+
+.version-hint.clickable {
+    color: var(--accent-color);
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 12px !important;
+}
+
+.version-hint.clickable:hover {
+    background: rgba(9, 105, 218, 0.1);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(9, 105, 218, 0.15);
+}
+
+/* Toast 样式 */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.toast {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 18px;
+    background: var(--panel-color);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    color: var(--text-color);
+    font-size: 13px;
+    font-weight: 500;
+    min-width: 250px;
+    max-width: 350px;
+    transform: translateX(400px);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: auto;
+}
+
+.toast.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.toast-icon {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.toast-success {
+    border-left: 3px solid var(--success-color);
+}
+
+.toast-success .toast-icon {
+    background: var(--success-color);
+    color: white;
+}
+
+.toast-error {
+    border-left: 3px solid var(--danger-color);
+}
+
+.toast-error .toast-icon {
+    background: var(--danger-color);
+    color: white;
+}
+
+.toast-info {
+    border-left: 3px solid var(--accent-color);
+}
+
+.toast-info .toast-icon {
+    background: var(--accent-color);
+    color: white;
+}

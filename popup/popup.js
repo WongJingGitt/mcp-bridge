@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusDot = document.getElementById('statusDot');
     const statusText = document.getElementById('statusText');
     const openOptionsButton = document.getElementById('openOptionsButton');
+    const newVersionText = document.getElementById('newVersionText');
 
     async function initialize() {
         try {
@@ -146,5 +147,80 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    async function compareVersions() {
+        try {
+            let remoteManifest = await chrome.storage.local.get(['manifest']);
+            
+            // 检查缓存是否过期（24小时）
+            if (!remoteManifest?.manifest || new Date().getTime() - remoteManifest.manifest.timestamp > 86400000) {
+                const response = await fetch('https://raw.githubusercontent.com/WongJingGitt/mcp-bridge/refs/heads/master/manifest.json');
+                remoteManifest = await response.json();
+                await chrome.storage.local.set({ manifest: { ...remoteManifest, timestamp: new Date().getTime() } });
+            } else {
+                remoteManifest = remoteManifest.manifest;
+            }
+
+            const localManifest = chrome.runtime.getManifest();
+            const remoteVersion = remoteManifest?.version;
+            const localVersion = localManifest?.version;
+            
+            // 使用 compareVersion.js 中的函数比较版本
+            const compareResult = window.compareVersions.compareVersions(remoteVersion, localVersion);
+            
+            if (compareResult > 0) {
+                // 有新版本
+                newVersionText.textContent = `🎉 发现新版本 v${remoteVersion}`;
+                newVersionText.classList.add('clickable');
+                newVersionText.style.cursor = 'pointer';
+                
+                // 点击下载新版本
+                newVersionText.addEventListener('click', () => {
+                    window.open('https://github.com/WongJingGitt/mcp-bridge/archive/refs/heads/master.zip');
+                    toast("已在浏览器中打开下载链接，请查看下载进度。", 'info');
+                });
+            } else {
+                // 已是最新版本
+                newVersionText.textContent = `✓ 当前已是最新版本 v${localVersion}`;
+            }
+        } catch (error) {
+            console.error("MCP Bridge: Error checking version.", error);
+            newVersionText.textContent = '版本检查失败';
+        }
+    }
+
+    function toast(message, type = 'success') {
+        const toastContainer = document.getElementById('toastContainer');
+        const toastEl = document.createElement('div');
+        toastEl.className = `toast toast-${type}`;
+        
+        // 添加图标
+        const icon = document.createElement('span');
+        icon.className = 'toast-icon';
+        if (type === 'success') {
+            icon.textContent = '✓';
+        } else if (type === 'error') {
+            icon.textContent = '✕';
+        } else if (type === 'info') {
+            icon.textContent = 'ℹ';
+        }
+        
+        const text = document.createElement('span');
+        text.textContent = message;
+        
+        toastEl.appendChild(icon);
+        toastEl.appendChild(text);
+        toastContainer.appendChild(toastEl);
+        
+        // 显示动画
+        setTimeout(() => toastEl.classList.add('show'), 10);
+        
+        // 自动移除
+        setTimeout(() => {
+            toastEl.classList.remove('show');
+            setTimeout(() => toastEl.remove(), 300);
+        }, 3000);
+    }
+
     initialize();
+    compareVersions();
 });
