@@ -13,7 +13,6 @@ async function main() {
     const isSupported = api_list.some(item => item.hostname === currentHostname);
     
     if (!isSupported) {
-        console.log('[MCP Bridge] Current site not in api_list, skipping panel creation');
         // 仍然监听消息,以便处理注入脚本的通信
         window.addEventListener('message', (event) => {
             if (event.source !== window || !event.data) {
@@ -198,8 +197,6 @@ function parseUIContent(uiConfig) {
         const targetIndex = index < 0 ? containers.length + index : index;
         const messageContainer = containers[targetIndex];
 
-        console.log('[MCP Bridge] parseUIContent: Target index:', targetIndex, 'Total:', containers.length);
-
         if (!messageContainer) {
             console.warn('[MCP Bridge] parseUIContent: No container at index:', targetIndex);
             return '';
@@ -242,9 +239,7 @@ async function handleTextInjection(payload) {
  */
 function handlePanelMessage(data) {
     const { type, payload } = data;
-    
-    console.log('[MCP Bridge] Received panel message:', type);
-    
+
     switch (type) {
         case 'MCP_BRIDGE_REDETECT_FROM_UI':
             // 转发重新检测请求到 background

@@ -37,23 +37,24 @@
     // --- Fetch Hook ---
     hookFetch({
         optionsHook: async function(options, url) {
-            console.log('[MCP Bridge] Fetch request intercepted:', url);
             if (!shouldInterceptRequest(url)) {
                 console.log('[MCP Bridge] Request not in API list, skipping');
                 return options;
             }
             
             console.log('[MCP Bridge] Request matches API list, sending to background');
+            console.log('[MCP Bridge] Original options.body type:', typeof options.body);
+            
             const responsePayload = await sendMessageAndWaitForResponse('FETCH_REQUEST_BODY', { url, body: options.body });
-            console.log('[MCP Bridge] Received modified body from background');
+            console.log('[MCP Bridge] Received modifiedBody type:', typeof responsePayload.modifiedBody);
+            
+            // modifiedBody 应该是字符串，直接赋值
             options.body = responsePayload.modifiedBody;
             return options;
         },
 
         responseHook: async function(response) {
             if (!shouldInterceptRequest(response.url)) return response;
-
-            console.log('[MCP Bridge] Response intercepted:', response.url, 'Content-Type:', response.headers.get('content-type'));
 
             // 检查是否是流式响应
             const contentType = response.headers.get('content-type') || '';
@@ -93,6 +94,7 @@
             }
 
             const responsePayload = await sendMessageAndWaitForResponse('XHR_REQUEST_BODY', { url: config.url, body: config.body });
+
             config.body = responsePayload.modifiedBody;
             handler.next(config);
         },
@@ -107,6 +109,7 @@
                     payload: { url: response.config.url, fullText }
                 }, '*');
             }
+
             handler.next(response);
         }
     });

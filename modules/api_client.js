@@ -20,7 +20,6 @@ async function fetchWithTimeout(url, options = {}, timeout = 5000) {
     const id = setTimeout(() => {
         controller.abort();
     }, timeout);
-    console.log('MCP Bridge: Fetch successful', url)
     try {
         const response = await fetch(url, {
             ...options,
@@ -138,7 +137,6 @@ export async function getConfig() {
     console.log('MCP Bridge: Fetching config')
     try {
         const data = await fetchWithTimeout(`${BASE_URL}/config`);
-        console.log('MCP Bridge: Config retrieved', data)
         if (data && data.success) {
             return data.config;
         }

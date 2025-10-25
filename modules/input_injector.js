@@ -17,11 +17,6 @@
  */
 export async function injectTextAndSubmit(text, inputConfig) {
     try {
-        console.log('[MCP Bridge] Injecting text to input:', { 
-            text: text.substring(0, 100), 
-            config: inputConfig,
-            willSubmit: !!inputConfig.submitKey
-        });
 
         // 获取总延迟时间（默认 1600ms）
         const totalDelay = inputConfig.submitDelay || 1600;
@@ -35,15 +30,12 @@ export async function injectTextAndSubmit(text, inputConfig) {
             afterSubmit: Math.round(totalDelay * 0.0625)   // 6.25% → 默认 100ms
         };
 
-        console.log('[MCP Bridge] Using delays:', delays);
 
         // 查找输入框
         const inputElement = findInputElement(inputConfig.selector);
         if (!inputElement) {
             throw new Error(`Input element not found: ${inputConfig.selector}`);
         }
-
-        console.log('[MCP Bridge] Input element found:', inputElement.tagName, inputElement.id || inputElement.className);
 
         // 聚焦输入框
         inputElement.focus();

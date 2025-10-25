@@ -16,8 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
         saveConfigButton: document.getElementById('saveConfigButton'),
         version: document.getElementById('version')
     };
-    
-    console.log('MCP Bridge: Elements found:', elements);
 
     // --- State ---
     let currentConfig = {};

@@ -36,7 +36,6 @@ chrome.webNavigation.onCompleted.addListener(async (details) => {
 // --- 消息监听与路由 (+++ 关键修正: 使用 async 和 try/catch 保证响应 +++) ---
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const {type, payload} = message;
-    console.log('message',  message, sender);
 
     (async () => {
         try {
@@ -70,7 +69,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                         sendResponse({success: true}); // 即使没有返回值，也确认收到
                         return;
                     case 'GET_CONFIG':
-                        console.log('Config接受')
                         const config = await apiClient.getConfig();
                         sendResponse(config);
                         return;
@@ -80,14 +78,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                         return;
                     case 'REDETECT_FROM_UI':
                         // 从最后一条 UI 消息重新检测工具调用
-                        console.log('[MCP Bridge] Received REDETECT_FROM_UI message', sender);
-                        console.log('[MCP Bridge] Tab ID:', tabId);
                         await handleRedetectFromUI(tabId);
                         sendResponse({ success: true });
                         return;
                     case 'MANUAL_TOOL_PARSE':
                         // 处理用户手动粘贴的内容
-                        console.log('[MCP Bridge] Received MANUAL_TOOL_PARSE message');
                         await handleManualToolParse(tabId, payload.content);
                         sendResponse({ success: true });
                         return;
@@ -143,11 +138,9 @@ async function handleRequestBody(tabId, payload) {
 
     const {api_list, always_inject = {}} = await chrome.storage.local.get(['api_list', 'always_inject']);
     const siteConfig = getSiteConfig(payload.url, api_list);
-    console.log('api_list', api_list, payload)
     if (!siteConfig) return createResponse(payload.body);
 
     const bodyJson = parseJsonSafely(payload.body);
-    console.log('bodyJson', bodyJson)
     if (!bodyJson) return createResponse(payload.body);
 
     const isNewConversation = checkIsNewConversation(bodyJson, siteConfig);
@@ -161,21 +154,14 @@ async function handleRequestBody(tabId, payload) {
 
         // 支持单个路径或多个路径
         const promptPaths = Array.isArray(siteConfig.promptPath) ? siteConfig.promptPath : [siteConfig.promptPath];
-        
-        console.log('[MCP Bridge] Injecting to paths:', promptPaths);
-        console.log('[MCP Bridge] isJsonString:', siteConfig.isJsonString);
-        console.log('[MCP Bridge] Request body before injection:', JSON.stringify(bodyJson).substring(0, 200));
+
         
         // 对每个路径都进行注入
         for (const path of promptPaths) {
             const originalPrompt = getByPath(bodyJson, path, siteConfig.isJsonString) || '';
-            console.log(`[MCP Bridge] Path "${path}" original value:`, originalPrompt);
             const finalPrompt = (isNewConversation ? initialPrompt + '\n\n---\n\n' : reminderPrompt + '\n\n---\n\n') + originalPrompt;
             setByPath(bodyJson, path, finalPrompt, siteConfig);
-            console.log(`[MCP Bridge] Path "${path}" after injection:`, getByPath(bodyJson, path, siteConfig.isJsonString)?.substring(0, 100));
         }
-        
-        console.log('[MCP Bridge] Request body after injection:', JSON.stringify(bodyJson).substring(0, 200));
 
         const modifiedBody = JSON.stringify(bodyJson);
         await setTabState(tabId, {status: 'AWAITING_RESPONSE'});
@@ -268,7 +254,6 @@ async function handleResponseComplete(tabId, payload) {
                 });
                 
                 if (response?.success && response.content) {
-                    console.log('[MCP Bridge] UI parsed content length:', response.content.length);
                     if (shouldReplaceText) {
                         fullText = response.content;
                     }
