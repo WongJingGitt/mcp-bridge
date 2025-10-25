@@ -31,7 +31,16 @@ export class StatusPanel {
         // 1. 创建宿主元素
         this.hostElement = document.createElement('div');
         this.hostElement.id = 'mcp-bridge-status-panel-host';
-        document.body.appendChild(this.hostElement);
+        
+        // 确保 body 已存在
+        if (!document.body) {
+            console.error('[MCP Bridge] document.body is null, waiting for DOMContentLoaded');
+            document.addEventListener('DOMContentLoaded', () => {
+                document.body.appendChild(this.hostElement);
+            });
+        } else {
+            document.body.appendChild(this.hostElement);
+        }
 
         // 2. 附加 Shadow DOM
         this.shadowRoot = this.hostElement.attachShadow({ mode: 'open' });
