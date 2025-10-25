@@ -350,9 +350,111 @@ document.addEventListener('DOMContentLoaded', () => {
         const isEnabled = toggle.checked;
 
         if (currentConfig.mcpServers && currentConfig.mcpServers[serviceName]) {
+            const originalValue = currentConfig.mcpServers[serviceName].enabled;
+            
+            // 更新本地配置
             currentConfig.mcpServers[serviceName].enabled = isEnabled;
-            // 自动保存
-            await handleSaveConfig(false);
+            
+            if (isEnabled) {
+                // 启用服务：保存配置并重启该服务
+                await handleEnableService(serviceName);
+            } else {
+                // 禁用服务：直接关闭该服务
+                await handleDisableService(serviceName);
+            }
+        }
+    }
+    
+    async function handleEnableService(serviceName) {
+        try {
+            // 直接调用本地 API 保存配置（不重载）
+            const saveResponse = await fetch('http://localhost:3849/config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ config: currentConfig })
+            });
+            
+            if (!saveResponse.ok) {
+                const errorData = await saveResponse.json();
+                throw new Error(errorData.detail || '保存配置失败');
+            }
+            
+            // 配置保存成功，等待重载完成
+            // 注意：POST /config 接口会自动重载所有服务
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            toast(`服务 "${serviceName}" 已启用`, 'success');
+            // 更新状态显示
+            checkServiceStatus(serviceName);
+        } catch (error) {
+            console.error('启用服务失败:', error);
+            toast(`启用失败: ${error.message}`, 'error');
+            // 回滚开关状态
+            const toggle = elements.serviceToggleList.querySelector(
+                `.service-toggle[data-service-name="${serviceName}"]`
+            );
+            if (toggle) toggle.checked = false;
+            currentConfig.mcpServers[serviceName].enabled = false;
+        }
+    }
+    
+    async function handleDisableService(serviceName) {
+        try {
+            // 先关闭服务
+            const shutdownResponse = await fetch('http://localhost:3849/shutdown-server', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ serverName: serviceName })
+            });
+            
+            const shutdownData = await shutdownResponse.json();
+            
+            if (!shutdownResponse.ok || !shutdownData.success) {
+                throw new Error(shutdownData.message || shutdownData.detail || '关闭服务失败');
+            }
+            
+            // 服务关闭成功后，直接调用本地 API 保存配置
+            // 使用 GET /config 接口读取当前配置，然后更新
+            const getResponse = await fetch('http://localhost:3849/config');
+            const getResult = await getResponse.json();
+            
+            if (getResult.success && getResult.config) {
+                // 更新配置中的 enabled 状态
+                if (getResult.config.mcpServers && getResult.config.mcpServers[serviceName]) {
+                    getResult.config.mcpServers[serviceName].enabled = false;
+                    
+                    // 保存配置（这会触发重载，但服务已经关闭了，不会重新启动）
+                    const saveResponse = await fetch('http://localhost:3849/config', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ config: getResult.config })
+                    });
+                    
+                    if (!saveResponse.ok) {
+                        const errorData = await saveResponse.json();
+                        console.warn('保存配置失败，但服务已关闭:', errorData);
+                    }
+                }
+            }
+            
+            toast(`服务 "${serviceName}" 已禁用`, 'success');
+            // 更新状态显示
+            setTimeout(() => checkServiceStatus(serviceName), 500);
+        } catch (error) {
+            console.error('禁用服务失败:', error);
+            toast(`禁用失败: ${error.message}`, 'error');
+            // 回滚开关状态
+            const toggle = elements.serviceToggleList.querySelector(
+                `.service-toggle[data-service-name="${serviceName}"]`
+            );
+            if (toggle) toggle.checked = true;
+            currentConfig.mcpServers[serviceName].enabled = true;
         }
     }
 
