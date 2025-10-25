@@ -478,9 +478,6 @@
     function shouldInterceptRequest(url) {
         try {
             const apiList = JSON.parse(localStorage.getItem('mcp_api_list') || '[]');
-            console.log('[MCP Bridge] Checking URL:', url);
-            console.log('[MCP Bridge] API list from localStorage:', apiList);
-            
             if (!apiList || !url) {
                 console.log('[MCP Bridge] apiList or url is empty');
                 return false;
@@ -494,7 +491,6 @@
                 const apis = Array.isArray(apiItem.api) ? apiItem.api : [apiItem.api];
                 return apis.some(apiEndpoint => {
                     const matches = url.includes(apiEndpoint);
-                    console.log(`[MCP Bridge] Checking ${apiEndpoint} in ${url}: ${matches}`);
                     return matches;
                 });
             });
