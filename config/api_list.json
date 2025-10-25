@@ -7,7 +7,7 @@
     "promptPath": "prompt",
     "isJsonString": false,
     "enabled": true,
-    "defaultAlwaysInject": false,
+    "defaultAlwaysInject": true,
     "response": {
       "type": "sse",
       "format": "data: {json}",
@@ -36,14 +36,14 @@
     "hostname": "yuanbao.tencent.com",
     "label": "腾讯元宝",
     "api": ["/api/chat/"],
-    "promptPath": "prompt",
+    "promptPath": ["prompt", "displayPrompt"],
     "isJsonString": false,
     "enabled": true,
-    "defaultAlwaysInject": false,
+    "defaultAlwaysInject": true,
     "response": {
       "type": "sse",
       "format": "data: {json}",
-      "contentPaths": ["content", "delta", "text"]
+      "contentPaths": ["msg"]
     },
     "uiParsing": {
       "enabled": true,
@@ -67,11 +67,18 @@
     "promptPath": "contents.0.content",
     "isJsonString": false,
     "enabled": true,
-    "defaultAlwaysInject": false,
+    "defaultAlwaysInject": true,
     "response": {
       "type": "sse",
       "format": "data: {json}",
       "contentPaths": ["content", "text", "delta"]
+    },
+    "uiParsing": {
+      "enabled": true,
+      "priority": "ui",
+      "messageContainer": ".tongyi-markdown",
+      "messageIndex": -1,
+      "contentSelector": ""
     },
     "input": {
       "selector": "textarea, [contenteditable='true']",
@@ -88,7 +95,7 @@
     "promptPath": "messages.0.content.parts.0",
     "isJsonString": false,
     "enabled": true,
-    "defaultAlwaysInject": false,
+    "defaultAlwaysInject": true,
     "response": {
       "type": "sse",
       "format": "data: {json}",
@@ -109,11 +116,18 @@
     "promptPath": "messages.0.content.text",
     "isJsonString": true,
     "enabled": true,
-    "defaultAlwaysInject": false,
+    "defaultAlwaysInject": true,
     "response": {
       "type": "sse",
       "format": "data: {json}",
       "contentPaths": ["choices.0.delta.content", "delta.content", "content"]
+    },
+    "uiParsing": {
+      "enabled": true,
+      "priority": "ui",
+      "messageContainer": "div[data-testid=\"message_text_content\"]",
+      "messageIndex": -1,
+      "contentSelector": ""
     },
     "input": {
       "selector": "textarea, [contenteditable='true']",
@@ -130,7 +144,7 @@
     "promptPath": "message",
     "isJsonString": false,
     "enabled": true,
-    "defaultAlwaysInject": false,
+    "defaultAlwaysInject": true,
     "response": {
       "type": "sse",
       "format": "data: {json}",
