@@ -2,6 +2,10 @@
  * content_script.js (Corrected with postMessage)
  */
 
+// TODO(2025-10-26): 元宝BUG：
+//      - 深度思考有概率无限发送消息
+//      - 首条消息判断不生效，始终都是带了完整的Prompt，即使关了
+
 let statusPanel = null;
 const MESSAGE_SOURCE_INJECTOR = 'mcp-bridge-injector';
 const MESSAGE_SOURCE_CONTENT = 'mcp-bridge-content-script';
