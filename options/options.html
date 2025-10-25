@@ -30,12 +30,40 @@
         <main id="sites-view" class="main-view active">
             <header class="view-header">
                 <h1>站点管理</h1>
-                <p>管理插件在各个网站上的行为，例如是否默认启用“每次都注入”模式。</p>
+                <p>管理 MCP Bridge 在不同 AI 平台的行为配置。</p>
             </header>
             <div class="view-panel">
-                <ul id="siteList" class="site-list">
-                    <!-- 站点列表将由 JS 动态生成 -->
-                </ul>
+                <!-- 桥接服务端口配置 -->
+                <section class="config-section">
+                    <h3 class="section-title">🔌 桥接服务配置</h3>
+                    <div class="port-config">
+                        <label for="bridgePort" class="config-label">
+                            <span>服务端口</span>
+                            <span class="hint-text">MCP Bridge Server 的端口号</span>
+                        </label>
+                        <div class="port-input-group">
+                            <input type="number" id="bridgePort" min="1" max="65535" placeholder="3849" />
+                            <button id="savePortButton" class="button secondary">保存</button>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- 站点列表 -->
+                <section class="config-section">
+                    <h3 class="section-title">🌐 站点配置</h3>
+                    <div class="feature-description">
+                        <div class="feature-item">
+                            <span class="feature-icon">🔄</span>
+                            <div class="feature-content">
+                                <strong>自动注入 System Prompt</strong>
+                                <p>开启后，每次发送消息都会自动注入工具列表，无需手动刷新。适合频繁使用工具的场景。</p>
+                            </div>
+                        </div>
+                    </div>
+                    <ul id="siteList" class="site-list">
+                        <!-- 站点列表将由 JS 动态生成 -->
+                    </ul>
+                </section>
             </div>
         </main>
 
@@ -59,6 +87,42 @@
                 <p>为高级用户提供直接编辑 JSON 配置文件的功能。手动保存后将自动触发服务重载。</p>
             </header>
             <div class="view-panel config-editor-container">
+                <!-- 配置格式说明 -->
+                <div class="config-help">
+                    <div class="help-header">
+                        <span class="help-icon">💡</span>
+                        <strong>支持的配置格式</strong>
+                    </div>
+                    <div class="help-content">
+                        <div class="format-example">
+                            <span class="format-label">格式1 - 完整配置：</span>
+                            <code>{"mcpServers": {"service1": {...}, "service2": {...}}}</code>
+                        </div>
+                        <div class="format-example">
+                            <span class="format-label">格式2 - 单个服务：</span>
+                            <code>{"command": "npx", "args": [...]}</code>
+                            <span class="format-note">（保存时会提示输入服务名称）</span>
+                        </div>
+                        <div class="format-example">
+                            <span class="format-label">格式3 - 多个服务：</span>
+                            <code>{"service1": {...}, "service2": {...}}</code>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 配置选项 -->
+                <div class="config-options">
+                    <div class="option-item">
+                        <label class="option-label">
+                            <input type="checkbox" id="replaceExistingServices" checked />
+                            <span class="option-text">
+                                <span class="option-title">自动替换已存在的服务</span>
+                                <span class="option-hint">关闭后，同名服务将被跳过</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
                 <textarea id="configEditor" spellcheck="false" placeholder="正在从本地服务加载配置..."></textarea>
                 <div class="config-actions">
                     <button id="reloadConfigButton" class="button secondary">🔄 重新加载</button>

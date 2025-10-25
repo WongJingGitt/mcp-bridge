@@ -68,15 +68,221 @@ body {
 /* --- 视图内容面板 --- */
 .view-panel { background: var(--panel-color); border-radius: var(--border-radius); box-shadow: 0 4px 12px var(--shadow-color); flex-grow: 1; display: flex; flex-direction: column; padding: 20px; overflow: hidden; }
 
+/* --- 配置区块 --- */
+.config-section {
+    margin-bottom: 24px;
+    flex-shrink: 0;
+}
+
+.config-section:last-child {
+    margin-bottom: 0;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.section-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 12px 0;
+    color: var(--text-color);
+}
+
+/* --- 功能说明 --- */
+.feature-description {
+    margin-bottom: 16px;
+    padding: 16px;
+    background: linear-gradient(135deg, rgba(9, 105, 218, 0.05) 0%, rgba(88, 166, 255, 0.05) 100%);
+    border-radius: 8px;
+    border-left: 3px solid var(--accent-color);
+}
+
+.feature-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.feature-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.feature-content {
+    flex: 1;
+}
+
+.feature-content strong {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 4px;
+}
+
+.feature-content p {
+    font-size: 13px;
+    color: var(--text-color-muted);
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* --- 端口配置 --- */
+.port-config {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background-color: #f6f8fa;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.config-label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex-grow: 1;
+}
+
+.config-label > span:first-child {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.hint-text {
+    font-size: 12px;
+    color: var(--text-color-muted);
+}
+
+.port-input-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#bridgePort {
+    width: 120px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: 'Courier New', monospace;
+    text-align: center;
+}
+
+#bridgePort:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.2);
+}
+
+#bridgePort::placeholder {
+    color: var(--text-color-muted);
+}
+
 /* --- 站点管理列表 --- */
 .site-list { list-style: none; padding: 0 10px 0 0; margin: 0; flex-grow: 1; overflow-y: auto; }
-.site-item { display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid #eef1f4; }
+.site-item { 
+    display: flex; 
+    align-items: flex-start;
+    gap: 16px; 
+    padding: 16px; 
+    border-bottom: 1px solid #eef1f4;
+    transition: background-color 0.2s ease;
+}
+
+.site-item:hover {
+    background-color: rgba(9, 105, 218, 0.02);
+}
+
 .site-item:last-child { border-bottom: none; }
-.site-info { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; }
-.site-name { font-weight: 600; }
-.site-hostname { font-size: 12px; color: var(--text-color-muted); }
-.site-actions { display: flex; align-items: center; gap: 16px; margin-left: auto; flex-shrink: 0; }
-.site-actions .action-label { font-size: 13px; color: var(--text-color-muted); }
+
+.site-info { 
+    flex-grow: 1; 
+    min-width: 0; 
+}
+
+.site-header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.site-name { 
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--text-color);
+}
+
+.site-hostname { 
+    font-size: 12px; 
+    color: var(--text-color-muted);
+    font-family: 'Courier New', monospace;
+}
+
+/* --- 站点控制组 --- */
+.site-controls {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.control-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-width: 200px;
+    padding: 8px 12px;
+    background-color: #f6f8fa;
+    border-radius: 8px;
+    border: 1px solid rgba(208, 215, 222, 0.3);
+    transition: all 0.2s ease;
+}
+
+.control-item:hover {
+    background-color: #eef1f4;
+    border-color: rgba(208, 215, 222, 0.5);
+}
+
+.control-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.control-icon {
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* 保留旧版兼容 */
+.site-actions { 
+    display: flex; 
+    align-items: center; 
+    gap: 16px; 
+    margin-left: auto; 
+    flex-shrink: 0; 
+}
+
+.site-actions .action-label { 
+    font-size: 13px; 
+    color: var(--text-color-muted); 
+}
 
 /* --- 服务管理列表 --- */
 .service-toggle-list { list-style: none; padding: 0 10px 0 0; margin: 0; flex-grow: 1; overflow-y: auto; }
@@ -160,11 +366,174 @@ body {
     transform: scale(0.95);
 }
 
+/* --- 删除按钮 --- */
+.delete-button {
+    padding: 6px 12px;
+    font-size: 13px;
+    background-color: #fff1f0;
+    color: var(--danger-color);
+    border: 1px solid rgba(207, 34, 46, 0.2);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.delete-button:hover {
+    background-color: #ffe4e1;
+    border-color: var(--danger-color);
+}
+
+.delete-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.delete-button:active:not(:disabled) {
+    transform: scale(0.95);
+}
+
 /* --- 服务配置 (JSON) --- */
-.config-editor-container { height: 100%; }
-#configEditor { flex-grow: 1; border: 1px solid var(--border-color); border-radius: 6px; font-family: 'Courier New', Courier, monospace; font-size: 14px; padding: 10px; resize: none; min-height: 100px; }
-#configEditor:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.2); }
-.config-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 16px; flex-shrink: 0; }
+.config-editor-container { 
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow: hidden;
+}
+
+/* --- 配置帮助说明 --- */
+.config-help {
+    background: linear-gradient(135deg, rgba(9, 105, 218, 0.05) 0%, rgba(88, 166, 255, 0.05) 100%);
+    border-radius: 8px;
+    border-left: 3px solid var(--accent-color);
+    padding: 16px;
+    flex-shrink: 0;
+}
+
+.help-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.help-icon {
+    font-size: 18px;
+}
+
+.help-header strong {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.help-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.format-example {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 13px;
+}
+
+.format-label {
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.format-example code {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    background-color: rgba(175, 184, 193, 0.2);
+    padding: 4px 8px;
+    border-radius: 4px;
+    color: #0969da;
+    display: inline-block;
+}
+
+.format-note {
+    font-size: 12px;
+    color: var(--text-color-muted);
+    font-style: italic;
+}
+
+/* --- 配置选项 --- */
+.config-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px 16px;
+    background-color: #f6f8fa;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.option-item {
+    display: flex;
+    align-items: center;
+}
+
+.option-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.option-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.option-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.option-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.option-hint {
+    font-size: 12px;
+    color: var(--text-color-muted);
+}
+
+#configEditor { 
+    flex: 1 1 auto; 
+    min-height: 200px;
+    max-height: calc(100vh - 450px); /* 预留空间给说明、选项和按钮 */
+    border: 1px solid var(--border-color); 
+    border-radius: 6px; 
+    font-family: 'Courier New', Courier, monospace; 
+    font-size: 14px; 
+    padding: 10px; 
+    resize: vertical; /* 允许垂直调整大小 */
+    overflow-y: auto;
+}
+
+#configEditor:focus { 
+    outline: none; 
+    border-color: var(--accent-color); 
+    box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.2); 
+}
+
+.config-actions { 
+    display: flex; 
+    justify-content: flex-end; 
+    gap: 12px; 
+    flex-shrink: 0; 
+}
 
 /* --- 通用组件 --- */
 .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
