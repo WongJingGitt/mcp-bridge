@@ -6,7 +6,28 @@
  * 集中处理网络请求、URL构造和基本的错误处理。
  */
 
-const BASE_URL = 'http://localhost:3849';
+/**
+ * 从 chrome.storage 获取桥接服务端口
+ * @returns {Promise<number>} - 端口号，默认 3849
+ */
+async function getBridgePort() {
+    try {
+        const { bridge_port } = await chrome.storage.local.get('bridge_port');
+        return bridge_port || 3849;
+    } catch (error) {
+        console.warn('MCP Bridge: Failed to get bridge port, using default 3849', error);
+        return 3849;
+    }
+}
+
+/**
+ * 获取基础 URL
+ * @returns {Promise<string>} - 基础 URL
+ */
+async function getBaseUrl() {
+    const port = await getBridgePort();
+    return `http://localhost:${port}`;
+}
 
 /**
  * 封装的 fetch 函数，增加了超时和统一的错误处理。
@@ -75,7 +96,8 @@ async function fetchWithTimeout(url, options = {}, timeout = 5000) {
  * @returns {Promise<{status: string}>}
  */
 export async function checkHealth() {
-    return await fetchWithTimeout(`${BASE_URL}/health`, {}, 2000);
+    const baseUrl = await getBaseUrl();
+    return await fetchWithTimeout(`${baseUrl}/health`, {}, 2000);
 }
 
 /**
@@ -83,7 +105,8 @@ export async function checkHealth() {
  * @returns {Promise<Array<{name: string, description: string}>>}
  */
 export async function getServices() {
-    const data = await fetchWithTimeout(`${BASE_URL}/tools`);
+    const baseUrl = await getBaseUrl();
+    const data = await fetchWithTimeout(`${baseUrl}/tools`);
     if (data && data.success && Array.isArray(data.services)) {
         return data.services;
     }
@@ -96,7 +119,8 @@ export async function getServices() {
  * @returns {Promise<Array<Object>>} - 工具列表。
  */
 export async function getToolsByServer(serverName) {
-    const url = new URL(`${BASE_URL}/tools`);
+    const baseUrl = await getBaseUrl();
+    const url = new URL(`${baseUrl}/tools`);
     url.searchParams.append('serverName', serverName);
     const data = await fetchWithTimeout(url.toString());
     if (data && data.success && Array.isArray(data.tools)) {
@@ -112,7 +136,8 @@ export async function getToolsByServer(serverName) {
  * @returns {Promise<any>} - 工具执行的结果。
  */
 export async function executeTool(toolName, args) {
-    const data = await fetchWithTimeout(`${BASE_URL}/execute`, {
+    const baseUrl = await getBaseUrl();
+    const data = await fetchWithTimeout(`${baseUrl}/execute`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -136,7 +161,8 @@ export async function executeTool(toolName, args) {
 export async function getConfig() {
     console.log('MCP Bridge: Fetching config')
     try {
-        const data = await fetchWithTimeout(`${BASE_URL}/config`);
+        const baseUrl = await getBaseUrl();
+        const data = await fetchWithTimeout(`${baseUrl}/config`);
         if (data && data.success) {
             return data.config;
         }
@@ -159,7 +185,8 @@ export async function getConfig() {
  * @returns {Promise<{success: boolean, message: string}>}
  */
 export async function updateConfig(newConfig) {
-    return await fetchWithTimeout(`${BASE_URL}/config`, {
+    const baseUrl = await getBaseUrl();
+    return await fetchWithTimeout(`${baseUrl}/config`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
