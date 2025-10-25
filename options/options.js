@@ -101,6 +101,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p class="service-description">${config.description || '无描述'}</p>
                 </div>
                 <div class="service-actions">
+                    <div class="service-status" data-service-name="${name}">
+                        <span class="status-indicator checking"></span>
+                        <span class="status-text">检测中...</span>
+                    </div>
+                    <button class="button restart-button" data-service-name="${name}" title="重启服务">
+                        🔄 重启
+                    </button>
                     <label class="switch">
                         <input type="checkbox" data-service-name="${name}" class="service-toggle" ${isEnabled ? 'checked' : ''}>
                         <span class="slider"></span>
@@ -108,6 +115,93 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
             elements.serviceToggleList.appendChild(item);
+            
+            // 检查服务状态
+            checkServiceStatus(name);
+        }
+        
+        // 绑定重启按钮事件
+        bindRestartButtons();
+    }
+    
+    async function checkServiceStatus(serviceName) {
+        const statusEl = elements.serviceToggleList.querySelector(`.service-status[data-service-name="${serviceName}"]`);
+        if (!statusEl) return;
+        
+        const indicator = statusEl.querySelector('.status-indicator');
+        const text = statusEl.querySelector('.status-text');
+        
+        try {
+            // 直接调用本地 API
+            const response = await fetch(`http://localhost:3849/tools?serverName=${encodeURIComponent(serviceName)}`);
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.tools) {
+                    // 服务正常运行
+                    indicator.className = 'status-indicator running';
+                    text.textContent = '运行中';
+                } else {
+                    // 返回了但有错误
+                    indicator.className = 'status-indicator error';
+                    text.textContent = '异常';
+                }
+            } else if (response.status === 404) {
+                // 服务未运行
+                indicator.className = 'status-indicator stopped';
+                text.textContent = '已停止';
+            } else {
+                // 其他错误
+                indicator.className = 'status-indicator error';
+                text.textContent = '错误';
+            }
+        } catch (error) {
+            // 无法连接到服务器
+            indicator.className = 'status-indicator stopped';
+            text.textContent = '未运行';
+        }
+    }
+    
+    function bindRestartButtons() {
+        const restartButtons = elements.serviceToggleList.querySelectorAll('.restart-button');
+        restartButtons.forEach(button => {
+            button.addEventListener('click', handleRestartService);
+        });
+    }
+    
+    async function handleRestartService(event) {
+        const button = event.currentTarget;
+        const serviceName = button.dataset.serviceName;
+        const originalText = button.innerHTML;
+        
+        button.disabled = true;
+        button.innerHTML = '⏳ 重启中...';
+        
+        try {
+            // 直接调用本地 API 重启服务
+            const response = await fetch('http://localhost:3849/restart-server', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ serverName: serviceName })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok && data.success) {
+                toast(`服务 "${serviceName}" 重启成功！`, 'success');
+                // 延迟一下再检查状态，让服务有时间启动
+                setTimeout(() => checkServiceStatus(serviceName), 1000);
+            } else {
+                toast(`重启失败: ${data.message || data.detail || '未知错误'}`, 'error');
+            }
+        } catch (error) {
+            console.error('重启服务失败:', error);
+            toast(`重启失败: ${error.message}`, 'error');
+        } finally {
+            button.disabled = false;
+            button.innerHTML = originalText;
         }
     }
 

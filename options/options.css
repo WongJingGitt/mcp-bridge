@@ -84,8 +84,81 @@ body {
 .service-toggle-item:last-child { border-bottom: none; }
 .service-info { flex-grow: 1; min-width: 0; }
 .service-name { font-weight: 600; }
-.service-description { font-size: 12px; color: var(--text-color-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.service-actions { margin-left: auto; flex-shrink: 0; }
+.service-description { font-size: 12px; color: var(--text-color-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 4px 0 0 0; }
+.service-actions { margin-left: auto; flex-shrink: 0; display: flex; align-items: center; gap: 12px; }
+
+/* --- 服务状态指示器 --- */
+.service-status { 
+    display: flex; 
+    align-items: center; 
+    gap: 6px; 
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    background-color: #f6f8fa;
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-indicator.checking {
+    background-color: #9ca3af;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.status-indicator.running {
+    background-color: #22c55e;
+    box-shadow: 0 0 4px rgba(34, 197, 94, 0.4);
+}
+
+.status-indicator.stopped {
+    background-color: #9ca3af;
+}
+
+.status-indicator.error {
+    background-color: #ef4444;
+    box-shadow: 0 0 4px rgba(239, 68, 68, 0.4);
+}
+
+.status-text {
+    font-weight: 500;
+    color: var(--text-color-muted);
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* --- 重启按钮 --- */
+.restart-button {
+    padding: 6px 12px;
+    font-size: 13px;
+    background-color: #f6f8fa;
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.restart-button:hover {
+    background-color: #eef1f4;
+    border-color: var(--text-color-muted);
+}
+
+.restart-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.restart-button:active:not(:disabled) {
+    transform: scale(0.95);
+}
 
 /* --- 服务配置 (JSON) --- */
 .config-editor-container { height: 100%; }
