@@ -13,6 +13,42 @@ export class StatusPanel {
         this.isVisible = false;
         this.isExpanded = true; // 默认展开
         this.isPermanent = true; // 常驻模式
+        this.isMinimized = false; // 最小化状态
+        this.isDragging = false; // 拖拽状态
+        this.dragOffset = { x: 0, y: 0 }; // 拖拽偏移
+        this.position = null; // 自定义位置 {left, top} 或 null
+        this.idleTimer = null; // 闲置计时器
+        this.lastActiveTime = Date.now(); // 最后活跃时间
+        
+        // 加载保存的位置
+        this.loadPosition();
+    }
+    
+    /**
+     * 从 localStorage 加载位置
+     */
+    loadPosition() {
+        try {
+            const saved = localStorage.getItem('mcp-bridge-panel-position');
+            if (saved) {
+                this.position = JSON.parse(saved);
+            }
+        } catch (e) {
+            console.warn('[MCP Bridge] Failed to load panel position:', e);
+        }
+    }
+    
+    /**
+     * 保存位置到 localStorage
+     */
+    savePosition() {
+        try {
+            if (this.position) {
+                localStorage.setItem('mcp-bridge-panel-position', JSON.stringify(this.position));
+            }
+        } catch (e) {
+            console.warn('[MCP Bridge] Failed to save panel position:', e);
+        }
     }
 
     /**
@@ -61,6 +97,11 @@ export class StatusPanel {
           <span>MCP Bridge</span>
         </div>
         <div class="panel-header-actions">
+          <button class="panel-action-btn minimize-btn" title="最小化">
+            <svg class="action-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 19h12v2H6v-2z" fill="currentColor"/>
+            </svg>
+          </button>
           <button class="panel-action-btn redetect-btn" title="重新检测工具调用">
             <svg class="action-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" fill="currentColor"/>
@@ -86,20 +127,184 @@ export class StatusPanel {
     `;
         this.shadowRoot.appendChild(panel);
 
-        // 5. 绑定展开/收起事件
-        const toggleBtn = this.shadowRoot.querySelector('.panel-toggle-btn');
-        toggleBtn.addEventListener('click', () => this.toggle());
+        // 5. 应用自定义位置
+        if (this.position) {
+            panel.style.left = this.position.left + 'px';
+            panel.style.top = this.position.top + 'px';
+            panel.style.right = 'auto';
+            panel.style.bottom = 'auto';
+        }
+
+        // 6. 绑定事件
+        this.bindEvents(panel);
         
-        // 6. 绑定重新检测按钮事件
-        const redetectBtn = this.shadowRoot.querySelector('.redetect-btn');
-        redetectBtn.addEventListener('click', () => this.handleRedetect());
-        
-        // 7. 绑定手动发送按钮事件
-        const manualSendBtn = this.shadowRoot.querySelector('.manual-send-btn');
-        manualSendBtn.addEventListener('click', () => this.handleManualSend());
+        // 7. 启动闲置检测
+        this.startIdleDetection();
         
         // 默认显示
         this.show();
+    }
+    
+    /**
+     * 绑定所有事件
+     */
+    bindEvents(panel) {
+        // 最小化按钮
+        const minimizeBtn = this.shadowRoot.querySelector('.minimize-btn');
+        minimizeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleMinimize();
+        });
+        
+        // 展开/收起事件
+        const toggleBtn = this.shadowRoot.querySelector('.panel-toggle-btn');
+        toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggle();
+        });
+        
+        // 重新检测按钮事件
+        const redetectBtn = this.shadowRoot.querySelector('.redetect-btn');
+        redetectBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.handleRedetect();
+        });
+        
+        // 手动发送按钮事件
+        const manualSendBtn = this.shadowRoot.querySelector('.manual-send-btn');
+        manualSendBtn.addEventListener('click', () => this.handleManualSend());
+        
+        // 拖拽事件（只在头部有效，不包括按钮）
+        const header = this.shadowRoot.querySelector('.panel-header');
+        header.addEventListener('mousedown', (e) => {
+            // 如果点击的是按钮，不触发拖拽
+            if (e.target.closest('.panel-action-btn') || e.target.closest('.panel-toggle-btn')) {
+                return;
+            }
+            
+            // 如果是最小化状态，点击恢复
+            if (this.isMinimized) {
+                this.toggleMinimize();
+                return;
+            }
+            
+            this.startDrag(e);
+        });
+        
+        document.addEventListener('mousemove', (e) => this.onDrag(e));
+        document.addEventListener('mouseup', () => this.stopDrag());
+        
+        // 活跃检测（鼠标移入）
+        panel.addEventListener('mouseenter', () => this.markActive());
+        panel.addEventListener('mouseleave', () => this.markActive());
+    }
+    
+    /**
+     * 开始拖拽
+     */
+    startDrag(e) {
+        this.isDragging = true;
+        const panel = this.shadowRoot.querySelector('.mcp-status-panel');
+        panel.classList.add('dragging');
+        
+        const rect = panel.getBoundingClientRect();
+        this.dragOffset = {
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top
+        };
+        
+        this.markActive();
+    }
+    
+    /**
+     * 拖拽中
+     */
+    onDrag(e) {
+        if (!this.isDragging) return;
+        
+        const panel = this.shadowRoot.querySelector('.mcp-status-panel');
+        const left = e.clientX - this.dragOffset.x;
+        const top = e.clientY - this.dragOffset.y;
+        
+        // 边界限制
+        const maxLeft = window.innerWidth - panel.offsetWidth;
+        const maxTop = window.innerHeight - panel.offsetHeight;
+        
+        this.position = {
+            left: Math.max(0, Math.min(left, maxLeft)),
+            top: Math.max(0, Math.min(top, maxTop))
+        };
+        
+        panel.style.left = this.position.left + 'px';
+        panel.style.top = this.position.top + 'px';
+        panel.style.right = 'auto';
+        panel.style.bottom = 'auto';
+    }
+    
+    /**
+     * 停止拖拽
+     */
+    stopDrag() {
+        if (!this.isDragging) return;
+        
+        this.isDragging = false;
+        const panel = this.shadowRoot.querySelector('.mcp-status-panel');
+        panel.classList.remove('dragging');
+        
+        // 保存位置
+        this.savePosition();
+    }
+    
+    /**
+     * 切换最小化
+     */
+    toggleMinimize() {
+        this.isMinimized = !this.isMinimized;
+        const panel = this.shadowRoot.querySelector('.mcp-status-panel');
+        
+        if (this.isMinimized) {
+            panel.classList.add('minimized');
+        } else {
+            panel.classList.remove('minimized');
+        }
+        
+        this.markActive();
+    }
+    
+    /**
+     * 标记活跃
+     */
+    markActive() {
+        this.lastActiveTime = Date.now();
+        const panel = this.shadowRoot.querySelector('.mcp-status-panel');
+        if (panel) {
+            panel.classList.remove('idle');
+        }
+    }
+    
+    /**
+     * 启动闲置检测
+     */
+    startIdleDetection() {
+        // 每 2 秒检查一次
+        this.idleTimer = setInterval(() => {
+            const idleTime = Date.now() - this.lastActiveTime;
+            const panel = this.shadowRoot?.querySelector('.mcp-status-panel');
+            
+            if (panel && idleTime > 5000 && !this.isMinimized) { // 5秒无操作
+                panel.classList.add('idle');
+            }
+        }, 2000);
+    }
+    
+    /**
+     * 停止闲置检测
+     */
+    stopIdleDetection() {
+        if (this.idleTimer) {
+            clearInterval(this.idleTimer);
+            this.idleTimer = null;
+        }
     }
 
     /**
@@ -216,6 +421,14 @@ export class StatusPanel {
 
         // 更新面板的 data-state 属性以应用不同的样式
         panel.dataset.state = status.toUpperCase();
+        
+        // 如果正在执行，自动恢复活跃状态和最小化
+        if (status.toUpperCase() === 'EXECUTING') {
+            this.markActive();
+            if (this.isMinimized) {
+                this.toggleMinimize();
+            }
+        }
 
         let iconHtml = '';
         switch (status.toUpperCase()) {
@@ -274,6 +487,9 @@ export class StatusPanel {
             console.warn('[MCP Bridge] Panel is permanent, cannot destroy');
             return;
         }
+        
+        // 停止闲置检测
+        this.stopIdleDetection();
         
         if (this.hostElement) {
             const panel = this.shadowRoot.querySelector('.mcp-status-panel');
