@@ -44,17 +44,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 const tabId = sender.tab.id;
                 switch (type) {
                     case 'FETCH_REQUEST_BODY':
+                        const fetchResponse = await handleRequestBody(tabId, payload);
+                        sendResponse(fetchResponse);
+                        return;
                     case 'XHR_REQUEST_BODY':
                         const response = await handleRequestBody(tabId, payload);
+
                         sendResponse(response);
                         return;
                     case 'FETCH_RESPONSE_CHUNK':
+                        await handleResponseChunk(tabId, payload);
+                        sendResponse({success: true});
+                        return;
                     case 'XHR_RESPONSE_CHUNK':
                         // 处理流式响应的中间块
                         await handleResponseChunk(tabId, payload);
                         sendResponse({success: true});
                         return;
                     case 'FETCH_RESPONSE_COMPLETE':
+                        await handleResponseComplete(tabId, payload);
+                        sendResponse({success: true});
+                        return;
                     case 'XHR_RESPONSE_COMPLETE':
                         await handleResponseComplete(tabId, payload);
                         sendResponse({success: true}); // 即使没有返回值，也确认收到
@@ -133,9 +143,11 @@ async function handleRequestBody(tabId, payload) {
 
     const {api_list, always_inject = {}} = await chrome.storage.local.get(['api_list', 'always_inject']);
     const siteConfig = getSiteConfig(payload.url, api_list);
+    console.log('api_list', api_list, payload)
     if (!siteConfig) return createResponse(payload.body);
 
     const bodyJson = parseJsonSafely(payload.body);
+    console.log('bodyJson', bodyJson)
     if (!bodyJson) return createResponse(payload.body);
 
     const isNewConversation = checkIsNewConversation(bodyJson, siteConfig);
@@ -147,11 +159,23 @@ async function handleRequestBody(tabId, payload) {
         const initialPrompt = promptBuilder.buildInitialPrompt(services);
         const reminderPrompt = promptBuilder.buildReminderPrompt();
 
-        const originalPrompt = getByPath(bodyJson, siteConfig.promptPath) || '';
-
-        const finalPrompt = (isNewConversation ? initialPrompt + '\n\n---\n\n' : reminderPrompt + '\n\n---\n\n') + originalPrompt;
-
-        setByPath(bodyJson, siteConfig.promptPath, finalPrompt, siteConfig);
+        // 支持单个路径或多个路径
+        const promptPaths = Array.isArray(siteConfig.promptPath) ? siteConfig.promptPath : [siteConfig.promptPath];
+        
+        console.log('[MCP Bridge] Injecting to paths:', promptPaths);
+        console.log('[MCP Bridge] isJsonString:', siteConfig.isJsonString);
+        console.log('[MCP Bridge] Request body before injection:', JSON.stringify(bodyJson).substring(0, 200));
+        
+        // 对每个路径都进行注入
+        for (const path of promptPaths) {
+            const originalPrompt = getByPath(bodyJson, path, siteConfig.isJsonString) || '';
+            console.log(`[MCP Bridge] Path "${path}" original value:`, originalPrompt);
+            const finalPrompt = (isNewConversation ? initialPrompt + '\n\n---\n\n' : reminderPrompt + '\n\n---\n\n') + originalPrompt;
+            setByPath(bodyJson, path, finalPrompt, siteConfig);
+            console.log(`[MCP Bridge] Path "${path}" after injection:`, getByPath(bodyJson, path, siteConfig.isJsonString)?.substring(0, 100));
+        }
+        
+        console.log('[MCP Bridge] Request body after injection:', JSON.stringify(bodyJson).substring(0, 200));
 
         const modifiedBody = JSON.stringify(bodyJson);
         await setTabState(tabId, {status: 'AWAITING_RESPONSE'});
@@ -269,6 +293,13 @@ async function handleResponseComplete(tabId, payload) {
 
     const toolCallJson = parseJsonSafely(toolCallMatch[1]);
     if (!toolCallJson || !toolCallJson.tool_name) {
+        // 把错误信息发送给模型
+        try {
+            JSON.parse(toolCallMatch[1])
+        } catch (e) {
+            await injectToolResult(tabId, `**工具调用失败！** \n\n错误信息:\n\n${e.message}`)
+        }
+
         await updateUIPanel(tabId, 'ERROR', '模型尝试调用工具，但格式不正确。');
         return;
     }
@@ -452,7 +483,7 @@ function getSiteConfig(url, apiList) {
         for (const apiItem of apiList) {
             const apis = apiItem?.api ?? [];
             for (const apiEndpoint of apis) {
-                if (apiEndpoint.includes(url)) return apiItem;
+                if (apiEndpoint.includes(url) || url.includes(apiEndpoint)) return apiItem;
             }
         }
         return null;
@@ -474,36 +505,88 @@ function checkIsNewConversation(body, siteConfig) {
     if (siteConfig.name === 'chatgpt' && body.parent_message_id) {
         return body.parent_message_id.includes('00000000-0000-0000-0000-000000000000');
     }
+    if (siteConfig.name === 'doubao' && body?.conversation_id == '0') return true;
     return !body.conversation_id && !body.parent_message_id && !body.sessionId;
 }
 
-function getByPath(obj, path) {
-    return path.split('.').reduce((acc, part) => acc && acc[part], obj);
+function getByPath(obj, path, isJsonString) {
+    const parts = path.split('.');
+    
+    if (isJsonString && parts.length >= 2) {
+        // 对于 JSON 字符串,需要特殊处理
+        const innerKey = parts.pop();
+        const jsonFieldKey = parts.pop();
+        
+        let target = obj;
+        for (const part of parts) {
+            if (!target) return undefined;
+            target = target[part];
+        }
+        
+        if (target && typeof target === 'object' && jsonFieldKey) {
+            try {
+                const jsonString = target[jsonFieldKey];
+                if (typeof jsonString === 'string') {
+                    const innerObj = JSON.parse(jsonString);
+                    return innerObj ? innerObj[innerKey] : undefined;
+                }
+            } catch (e) {
+                console.error('[MCP Bridge] Failed to parse JSON string in getByPath:', e);
+                return undefined;
+            }
+        }
+        return undefined;
+    } else {
+        // 普通路径
+        return parts.reduce((acc, part) => acc && acc[part], obj);
+    }
 }
 
 function setByPath(obj, path, value, siteConfig) {
     const {isJsonString} = siteConfig;
     const parts = path.split('.');
-    const lastPart = parts.pop();
-    let target = obj;
-    for (const part of parts) {
-        if (target === undefined || target === null) return;
-        target = target[part];
-    }
-    if (target && typeof target === 'object' && lastPart) {
-        if (isJsonString) {
+    
+    if (isJsonString && parts.length >= 2) {
+        // 对于 JSON 字符串,需要特殊处理
+        // 例如: "messages.0.content.text" 
+        // - parts = ["messages", "0", "content", "text"]
+        // - 我们需要找到 "content" 字段,解析它,修改内部的 "text",再序列化回去
+        
+        const innerKey = parts.pop(); // "text"
+        const jsonFieldKey = parts.pop(); // "content"
+        
+        // 导航到 JSON 字符串所在的对象
+        let target = obj;
+        for (const part of parts) {
+            if (target === undefined || target === null) return;
+            target = target[part];
+        }
+        
+        if (target && typeof target === 'object' && jsonFieldKey) {
             try {
-                const jsonString = target[lastPart];
-                const innerObj = JSON.parse(jsonString);
-                const keyToUpdate = path.split('.').pop();
-                if (innerObj && typeof innerObj === 'object' && keyToUpdate in innerObj) {
-                    innerObj[keyToUpdate] = value;
-                    target[lastPart] = JSON.stringify(innerObj);
+                const jsonString = target[jsonFieldKey];
+                if (typeof jsonString === 'string') {
+                    const innerObj = JSON.parse(jsonString);
+                    if (innerObj && typeof innerObj === 'object') {
+                        innerObj[innerKey] = value;
+                        target[jsonFieldKey] = JSON.stringify(innerObj);
+                    }
+                } else {
+                    console.warn('[MCP Bridge] isJsonString is true but field is not a string:', jsonString);
                 }
             } catch (e) {
-                console.error("MCP Bridge: Failed to parse and set value in JSON string.", e);
+                console.error('[MCP Bridge] Failed to parse and set value in JSON string:', e);
             }
-        } else {
+        }
+    } else {
+        // 普通路径处理
+        const lastPart = parts.pop();
+        let target = obj;
+        for (const part of parts) {
+            if (target === undefined || target === null) return;
+            target = target[part];
+        }
+        if (target && typeof target === 'object' && lastPart) {
             target[lastPart] = value;
         }
     }
@@ -670,6 +753,12 @@ async function handleRedetectFromUI(tabId) {
 
         const toolCallJson = parseJsonSafely(toolCallMatch[1]);
         if (!toolCallJson || !toolCallJson.tool_name) {
+            // 把错误信息发送给模型
+            try {
+                JSON.parse(toolCallMatch[1])
+            } catch (e) {
+                await injectToolResult(tabId, `**工具调用失败！** \n\n错误信息:\n\n${e.message}`)
+            }
             await updateUIPanel(tabId, 'ERROR', '检测到工具调用,但格式不正确');
             setTimeout(() => destroyUIPanel(tabId), 3000);
             return;
