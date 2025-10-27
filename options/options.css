@@ -66,7 +66,7 @@ body {
 .view-header p { font-size: 14px; color: var(--text-color-muted); margin: 0; }
 
 /* --- 视图内容面板 --- */
-.view-panel { background: var(--panel-color); border-radius: var(--border-radius); box-shadow: 0 4px 12px var(--shadow-color); flex-grow: 1; display: flex; flex-direction: column; padding: 20px; overflow: hidden; }
+.view-panel { background: var(--panel-color); border-radius: var(--border-radius); box-shadow: 0 4px 12px var(--shadow-color); flex-grow: 1; display: flex; flex-direction: column; padding: 20px; overflow: auto; }
 
 /* --- 配置区块 --- */
 .config-section {
@@ -398,7 +398,6 @@ body {
     display: flex;
     flex-direction: column;
     gap: 16px;
-    overflow: hidden;
 }
 
 /* --- 配置帮助说明 --- */
