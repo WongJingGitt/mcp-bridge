@@ -14,6 +14,7 @@ export class StatusPanel {
         this.isExpanded = true; // 默认展开
         this.isPermanent = true; // 常驻模式
         this.isMinimized = false; // 最小化状态
+        this.userMinimized = false; // 用户是否主动最小化（不持久化，仅当前会话）
         this.isDragging = false; // 拖拽状态
         this.dragStarted = false; // 拖拽是否已开始
         this.dragOffset = { x: 0, y: 0 }; // 拖拽偏移
@@ -159,7 +160,7 @@ export class StatusPanel {
         const minimizeBtn = this.shadowRoot.querySelector('.minimize-btn');
         minimizeBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.toggleMinimize();
+            this.toggleMinimize(true); // 用户主动触发
         });
         
         // 展开/收起事件
@@ -245,7 +246,7 @@ export class StatusPanel {
             
             // 如果是最小化状态，且是快速点击（不是拖拽），则展开
             if (this.isMinimized && clickDuration < 300 && moveDistance < 5 && !this.dragStarted) {
-                this.toggleMinimize();
+                this.toggleMinimize(true); // 用户主动触发
             }
             
             clickStartTime = 0;
@@ -333,15 +334,24 @@ export class StatusPanel {
     
     /**
      * 切换最小化
+     * @param {boolean} fromUser - 是否由用户主动触发
      */
-    toggleMinimize() {
+    toggleMinimize(fromUser = false) {
         this.isMinimized = !this.isMinimized;
         const panel = this.shadowRoot.querySelector('.mcp-status-panel');
         
         if (this.isMinimized) {
             panel.classList.add('minimized');
+            // 如果是用户主动最小化，记录状态
+            if (fromUser) {
+                this.userMinimized = true;
+            }
         } else {
             panel.classList.remove('minimized');
+            // 用户手动展开，清除标记
+            if (fromUser) {
+                this.userMinimized = false;
+            }
         }
         
         this.markActive();
@@ -519,11 +529,23 @@ export class StatusPanel {
         // 更新面板的 data-state 属性以应用不同的样式
         panel.dataset.state = status.toUpperCase();
         
-        // 如果正在执行，自动恢复活跃状态和最小化
-        if (status.toUpperCase() === 'EXECUTING') {
+        const isError = status.toUpperCase() === 'ERROR';
+        const isExecuting = status.toUpperCase() === 'EXECUTING';
+        
+        // 智能展开逻辑：
+        // 1. 如果是错误状态，总是展开（无论用户之前是否最小化）
+        // 2. 如果是执行状态，只在用户未主动最小化时展开
+        if (isError) {
             this.markActive();
             if (this.isMinimized) {
-                this.toggleMinimize();
+                this.toggleMinimize(false); // 自动展开，不清除用户最小化标记
+                this.userMinimized = false; // 但错误时重置标记，允许后续自动展开
+            }
+        } else if (isExecuting && !this.userMinimized) {
+            // 只在用户没有主动最小化时才自动展开
+            this.markActive();
+            if (this.isMinimized) {
+                this.toggleMinimize(false); // 自动展开
             }
         }
 
