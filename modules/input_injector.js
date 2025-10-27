@@ -36,6 +36,9 @@ export async function injectTextAndSubmit(text, inputConfig) {
         if (!inputElement) {
             throw new Error(`Input element not found: ${inputConfig.selector}`);
         }
+        
+        console.log('INPUT VALUE TEXT', inputElement.value, inputElement.textContent);
+        console.log('INPUT VALUE ASSERT', inputElement.value === text, inputElement.textContent === text)
 
         // 聚焦输入框
         inputElement.focus();

@@ -164,11 +164,13 @@ async function handleRequestBody(tabId, payload) {
         }
 
         const modifiedBody = JSON.stringify(bodyJson);
-        await setTabState(tabId, {status: 'AWAITING_RESPONSE'});
+        // 新对话开始，清除之前的工具调用状态
+        await setTabState(tabId, {status: 'AWAITING_RESPONSE', currentToolCall: null, resultInjected: false});
         return createResponse(modifiedBody);
     }
 
-    await setTabState(tabId, {status: 'AWAITING_RESPONSE'});
+    // 即使不注入 prompt，也清除上一次的结果注入标记（新的用户消息）
+    await setTabState(tabId, {status: 'AWAITING_RESPONSE', currentToolCall: state.currentToolCall, resultInjected: false});
     return createResponse(payload.body);
 }
 
@@ -196,6 +198,12 @@ async function handleResponseChunk(tabId, payload) {
     const state = await getTabState(tabId);
     if (state.currentToolCall === toolCallMatch[0]) {
         console.log('[MCP Bridge] Tool call already processed, skipping');
+        return;
+    }
+    
+    // 检查是否已经发送过结果（防止重复注入）
+    if (state.resultInjected) {
+        console.log('[MCP Bridge] Result already injected, skipping');
         return;
     }
 
@@ -264,15 +272,29 @@ async function handleResponseComplete(tabId, payload) {
         }
     }
 
+    // 检查是否已经处理过工具调用（避免 chunk 和 complete 重复处理）
+    const state = await getTabState(tabId);
+    
     // 高容错:开头和结尾的 < > 都是可选的
     const toolCallMatch = fullText.match(/<?\s*tool_code\s*>?([\s\S]*?)<\s*\/\s*tool_code\s*>/);
     if (!toolCallMatch) {
-        const state = await getTabState(tabId);
         if (state.status === 'AWAITING_RESPONSE') {
             await updateUIPanel(tabId, 'SUCCESS', '响应完成，未发现工具调用。');
             setTimeout(() => destroyUIPanel(tabId), 3000);
             await clearTabState(tabId);
         }
+        return;
+    }
+
+    // 如果已经处理过相同的工具调用，直接返回
+    if (state.currentToolCall === toolCallMatch[0]) {
+        console.log('[MCP Bridge] Tool call already processed in chunk handler, skipping complete');
+        return;
+    }
+    
+    // 如果已经注入过结果，也不再处理
+    if (state.resultInjected) {
+        console.log('[MCP Bridge] Result already injected, skipping complete');
         return;
     }
 
@@ -283,6 +305,8 @@ async function handleResponseComplete(tabId, payload) {
             JSON.parse(toolCallMatch[1])
         } catch (e) {
             await injectToolResult(tabId, `**工具调用失败！** \n\n错误信息:\n\n${e.message}`)
+            // 标记已注入
+            await setTabState(tabId, { ...state, resultInjected: true });
         }
 
         await updateUIPanel(tabId, 'ERROR', '模型尝试调用工具，但格式不正确。');
@@ -290,6 +314,9 @@ async function handleResponseComplete(tabId, payload) {
     }
 
     console.log('[MCP Bridge] Parsed tool call:', toolCallJson);
+
+    // 记录当前工具调用
+    await setTabState(tabId, { ...state, currentToolCall: toolCallMatch[0] });
 
     const {tool_name, arguments: args} = toolCallJson;
     if (tool_name === 'list_tools_in_service') {
@@ -309,9 +336,12 @@ async function handleListTools(tabId, serviceName) {
         
         // 使用智能输入注入代替页面刷新
         await injectToolResult(tabId, resultText);
-        await clearTabState(tabId);
+        
+        // 标记结果已注入，防止重复发送，但保留 currentToolCall
+        const state = await getTabState(tabId);
+        await setTabState(tabId, { ...state, resultInjected: true });
     } catch (error) {
-        await handleToolError(tabId, 'list_tools_in_service', error.message);
+        await handleToolError(tabId, 'list_tools_in_service', error);
     }
 }
 
@@ -331,7 +361,10 @@ async function handleExecuteTool(tabId, toolName, args) {
         
         // 使用智能输入注入代替页面刷新
         await injectToolResult(tabId, resultText);
-        await clearTabState(tabId);
+        
+        // 标记结果已注入，防止重复发送，但保留 currentToolCall
+        const state = await getTabState(tabId);
+        await setTabState(tabId, { ...state, resultInjected: true });
     } catch (error) {
         console.error('[MCP Bridge] Tool execution error:', error);
         await handleToolError(tabId, toolName, error);
@@ -383,7 +416,10 @@ async function handleToolError(tabId, toolName, error) {
     
     // 使用智能输入注入代替页面刷新
     await injectToolResult(tabId, errorText);
-    await clearTabState(tabId);
+    
+    // 标记结果已注入，防止重复发送，但保留 currentToolCall
+    const state = await getTabState(tabId);
+    await setTabState(tabId, { ...state, resultInjected: true });
 }
 
 /**
