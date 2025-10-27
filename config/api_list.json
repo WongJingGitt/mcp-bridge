@@ -57,6 +57,13 @@
       "submitKey": "Enter",
       "submitModifiers": [],
       "submitDelay": 2000
+    },
+    "newConversationFlag": {
+      "from": "requestBody",
+      "path": "chatModelExtInfo",
+      "checkExists": true,
+      "checkValue": null,
+      "valueType": null
     }
   },
   {
@@ -134,6 +141,12 @@
       "submitKey": "Enter",
       "submitModifiers": [],
       "submitDelay": 1600
+    },
+    "newConversationFlag": {
+      "from": "requestBody",
+      "path": "conversation_id",
+      "checkValue": "0",
+      "valueType": "string"
     }
   },
   {

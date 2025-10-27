@@ -522,12 +522,92 @@ function parseJsonSafely(str) {
 }
 
 // 修正：为不同网站提供更准确的新对话判断
+/**
+ * 检查是否是新对话
+ * @param {object} body - 请求体对象
+ * @param {object} siteConfig - 站点配置
+ * @returns {boolean} - 是否是新对话
+ */
 function checkIsNewConversation(body, siteConfig) {
+    // 如果配置了 newConversationFlag，使用配置化的判断逻辑
+    if (siteConfig.newConversationFlag) {
+        const flag = siteConfig.newConversationFlag;
+        
+        // 获取要检查的字段值
+        let value;
+        if (flag.from === 'requestBody') {
+            // 从请求体中获取值
+            value = getByPath(body, flag.path, siteConfig.isJsonString);
+        }
+        // 未来可以扩展其他来源，如 headers, url 等
+        
+        // 根据检查类型进行判断
+        if (flag.checkExists !== undefined && flag.checkExists !== null) {
+            // 检查字段是否存在
+            if (flag.checkExists === true) {
+                // 期望字段存在
+                const exists = value !== undefined && value !== null;
+                
+                // 如果还需要检查具体值
+                if (exists && flag.checkValue !== undefined && flag.checkValue !== null) {
+                    return checkValueMatch(value, flag.checkValue, flag.valueType);
+                }
+                
+                return exists;
+            } else {
+                // 期望字段不存在
+                return value === undefined || value === null;
+            }
+        }
+        
+        // 如果只配置了 checkValue，直接比较值
+        if (flag.checkValue !== undefined && flag.checkValue !== null) {
+            return checkValueMatch(value, flag.checkValue, flag.valueType);
+        }
+        
+        // 如果配置不完整，返回 false（不是新对话）
+        console.warn('[MCP Bridge] Invalid newConversationFlag config:', flag);
+        return false;
+    }
+    
+    // 没有配置 newConversationFlag，使用旧的硬编码逻辑
+    // 保持向后兼容
     if (siteConfig.name === 'chatgpt' && body.parent_message_id) {
         return body.parent_message_id.includes('00000000-0000-0000-0000-000000000000');
     }
     if (siteConfig.name === 'doubao' && body?.conversation_id == '0') return true;
+    if (siteConfig.name === 'yuanbao' && body?.chatModelExtInfo) return true;
     return !body.conversation_id && !body.parent_message_id && !body.sessionId;
+}
+
+/**
+ * 检查值是否匹配
+ * @param {any} actualValue - 实际值
+ * @param {any} expectedValue - 期望值
+ * @param {string} valueType - 值类型 (string, number, boolean, null)
+ * @returns {boolean} - 是否匹配
+ */
+function checkValueMatch(actualValue, expectedValue, valueType) {
+    // 如果没有指定类型，直接比较
+    if (!valueType) {
+        // eslint-disable-next-line eqeqeq
+        return actualValue == expectedValue; // 使用 == 允许类型转换
+    }
+    
+    // 根据类型进行比较
+    switch (valueType) {
+        case 'string':
+            return String(actualValue) === String(expectedValue);
+        case 'number':
+            return Number(actualValue) === Number(expectedValue);
+        case 'boolean':
+            return Boolean(actualValue) === Boolean(expectedValue);
+        case 'null':
+            return actualValue === null;
+        default:
+            // eslint-disable-next-line eqeqeq
+            return actualValue == expectedValue;
+    }
 }
 
 function getByPath(obj, path, isJsonString) {
