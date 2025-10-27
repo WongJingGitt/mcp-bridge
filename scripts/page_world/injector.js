@@ -46,7 +46,9 @@
             const responsePayload = await sendMessageAndWaitForResponse('FETCH_REQUEST_BODY', { url, body: options.body });
             
             // modifiedBody 应该是字符串，直接赋值
-            options.body = responsePayload.modifiedBody;
+            if (responsePayload && responsePayload.modifiedBody !== undefined) {
+                options.body = responsePayload.modifiedBody;
+            }
             return options;
         },
 
@@ -90,7 +92,9 @@
 
             const responsePayload = await sendMessageAndWaitForResponse('XHR_REQUEST_BODY', { url: config.url, body: config.body });
 
-            config.body = responsePayload.modifiedBody;
+            if (responsePayload && responsePayload.modifiedBody !== undefined) {
+                config.body = responsePayload.modifiedBody;
+            }
             handler.next(config);
         },
         onResponse: (response, handler) => {
