@@ -42,11 +42,8 @@
                 return options;
             }
             
-            console.log('[MCP Bridge] Request matches API list, sending to background');
-            console.log('[MCP Bridge] Original options.body type:', typeof options.body);
             
             const responsePayload = await sendMessageAndWaitForResponse('FETCH_REQUEST_BODY', { url, body: options.body });
-            console.log('[MCP Bridge] Received modifiedBody type:', typeof responsePayload.modifiedBody);
             
             // modifiedBody 应该是字符串，直接赋值
             options.body = responsePayload.modifiedBody;
@@ -61,14 +58,12 @@
             const isStreamResponse = contentType.includes('stream') || contentType.includes('event-stream');
 
             if (isStreamResponse) {
-                console.log('[MCP Bridge] Detected streaming response, will monitor chunks');
                 // 对于流式响应，需要读取流并重新构造
                 return handleStreamingResponse(response);
             } else {
                 // 非流式响应，直接读取全文
                 const responseClone = response.clone();
                 const fullText = await responseClone.text().catch(() => '');
-                console.log('[MCP Bridge] Full response text length:', fullText.length);
 
                 window.postMessage({
                     source: MESSAGE_SOURCE,
