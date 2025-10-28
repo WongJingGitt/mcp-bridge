@@ -754,6 +754,128 @@ console.log('内容:', content?.innerText);
 - 每次请求会同时在三个字段注入 MCP System Prompt
 - 适用于后端需要多个字段保持一致的场景
 
+### 数组根对象配置
+
+某些平台的请求体本身是数组而非对象:
+
+```json
+{
+  "name": "array_root_platform",
+  "hostname": "example.com",
+  "label": "数组根平台",
+  "api": ["/api/chat"],
+  "promptPath": "0.content.text",
+  "isJsonString": true,
+  "enabled": true
+}
+```
+
+**请求体示例:**
+```json
+[
+  {
+    "content": "{\"text\":\"用户消息\"}",
+    "content_type": 2001
+  }
+]
+```
+
+**路径解析:**
+- `0` - 访问数组第一个元素
+- `content` - 访问该元素的 content 字段
+- `text` - 因为 `isJsonString: true`，会解析 JSON 字符串后访问 text
+
+### skipRequestModification (可选)
+
+**类型:** `boolean`  
+**默认值:** `false`  
+**说明:** 是否跳过请求体修改，仅监听响应
+
+**使用场景:** 某些网站的请求体使用加密或特殊编码，无法直接修改
+
+**示例:**
+```json
+{
+  "name": "encrypted_site",
+  "hostname": "encrypted.example.com",
+  "api": ["/api/chat"],
+  "skipRequestModification": true,
+  "enabled": true,
+  "response": {
+    "type": "sse",
+    "contentPaths": ["content"]
+  }
+}
+```
+
+**注意:** 启用此选项后：
+- ✅ 仍然可以检测工具调用
+- ✅ 仍然可以执行工具
+- ❌ 无法自动注入 System Prompt
+- ⚠️ 需要用户手动在网站设置中配置 System Prompt
+
+## 高级配置场景
+
+### 场景 1: 多路径 + JSON 字符串
+
+```json
+{
+  "promptPath": ["prompt", "messages.0.content.text"],
+  "isJsonString": true
+}
+```
+
+**说明:** `isJsonString` 会影响所有路径。如果只有部分路径需要 JSON 解析，建议拆分为独立配置。
+
+### 场景 2: 嵌套数组访问
+
+```json
+{
+  "promptPath": "messages.0.parts.0.text"
+}
+```
+
+**请求体:**
+```json
+{
+  "messages": [
+    {
+      "parts": [
+        {"text": "用户输入"}
+      ]
+    }
+  ]
+}
+```
+
+### 场景 3: 新会话标识
+
+某些平台需要特殊标识来区分新会话:
+
+```json
+{
+  "newConversationFlag": {
+    "field": "conversation_id",
+    "defaultValue": null,
+    "isNewWhen": "null"
+  }
+}
+```
+
+**说明:**
+- `field` - 请求体中标识字段的路径
+- `defaultValue` - 新会话时的默认值
+- `isNewWhen` - 何时判定为新会话 (`"null"` | `"empty"` | `"undefined"`)
+
+**示例:**
+```json
+// 新会话
+{"conversation_id": null}  // 注入完整 System Prompt
+
+// 继续会话
+{"conversation_id": "abc123"}  // 注入提醒 Prompt
+```
+
 ## 常见问题
 
 ### Q1: 如何知道 API 路径？
@@ -783,8 +905,23 @@ console.log('内容:', content?.innerText);
 4. 打开控制台查看日志
 5. 发送包含工具调用的请求测试
 
+### Q5: 多路径配置的性能影响？
+
+**A:** 几乎无影响。即使配置 10 个路径，也只是循环进行对象访问和字符串拼接，耗时 < 1ms。
+
+### Q6: skipRequestModification 适用哪些网站？
+
+**A:** 适用于:
+- 请求体加密的网站
+- 使用 Protobuf 等二进制格式的网站
+- 无法识别请求体结构的网站
+
+不适用于:
+- 可以正常抓包看到 JSON 请求体的网站
+
 ## 相关文档
 
 - [README.md](../README.md) - 项目总览
 - [FALLBACK_GUIDE.md](./FALLBACK_GUIDE.md) - 兜底机制详解
 - [RESPONSE_CONFIG_GUIDE.md](./RESPONSE_CONFIG_GUIDE.md) - 响应配置详解
+- [ONLOAD_TIP_GUIDE.md](./ONLOAD_TIP_GUIDE.md) - 页面加载提示配置
