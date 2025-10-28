@@ -330,7 +330,15 @@ async function handleListTools(tabId, serviceName) {
     try {
         await updateUIPanel(tabId, 'EXECUTING', `查询服务 <strong>${serviceName}</strong> 的工具...`);
         const tools = await apiClient.getToolsByServer(serviceName);
-        const resultText = `服务 "${serviceName}" 下有以下工具:\n${tools.map(t => `- ${t.name}: ${t.description}`).join('\n')}`;
+        
+        // 构建工具列表的 JSON 数组格式
+        const toolsData = tools.map(t => ({
+            name: t.name,
+            description: t.description,
+            parameters: t.parameters || {}
+        }));
+        
+        const resultText = `服务 "${serviceName}" 下有以下工具:\n\n\`\`\`json\n${JSON.stringify(toolsData, null, 2)}\n\`\`\``;
         
         await updateUIPanel(tabId, 'SUCCESS', `已获取工具列表，正在反馈给模型...`);
         
