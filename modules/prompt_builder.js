@@ -61,7 +61,8 @@ ${serviceListText}
   "tool_name": "实际工具名",
   "arguments": {
     "参数名": "参数值"
-  }
+  },
+  "server_name": "服务名称"  // 可选字段，如果需要指定服务的话，用于区分同名工具
 }
 </tool_code>
 \`\`\`
