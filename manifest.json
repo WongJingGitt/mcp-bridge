@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MCP Bridge",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "通过本地桥接服务，为网页大模型提供强大的MCP工具调用能力。",
   "permissions": [
     "storage",
@@ -15,7 +15,8 @@
     "https://yuanbao.tencent.com/*",
     "https://www.tongyi.com/*",
     "https://www.doubao.com/*",
-    "https://grok.com/*"
+    "https://grok.com/*",
+    "https://aistudio.google.com/*"
   ],
   "background": {
     "service_worker": "scripts/background.js",
@@ -29,7 +30,8 @@
         "https://yuanbao.tencent.com/*",
         "https://www.tongyi.com/*",
         "https://www.doubao.com/*",
-        "https://grok.com/*"
+        "https://grok.com/*",
+        "https://aistudio.google.com/*"
       ],
       "js": [
         "scripts/page_world/fetchhook.js",
@@ -46,7 +48,8 @@
         "https://yuanbao.tencent.com/*",
         "https://www.tongyi.com/*",
         "https://www.doubao.com/*",
-        "https://grok.com/*"
+        "https://grok.com/*",
+        "https://aistudio.google.com/*"
       ],
       "js": ["scripts/content_script.js"],
       "run_at": "document_start"
@@ -57,6 +60,8 @@
       "resources": [
         "ui/status_panel.css",
         "ui/status_panel.js",
+        "ui/confirm_dialog.css",
+        "ui/confirm_dialog.js",
         "modules/input_injector.js"
       ],
       "matches": [
@@ -65,7 +70,8 @@
         "https://yuanbao.tencent.com/*",
         "https://www.tongyi.com/*",
         "https://www.doubao.com/*",
-        "https://grok.com/*"
+        "https://grok.com/*",
+        "https://aistudio.google.com/*"
       ]
     }
   ],
