@@ -42,6 +42,12 @@
                 return options;
             }
             
+            // 检查是否需要跳过请求修改（仅监听响应）
+            const siteConfig = getSiteConfig(url);
+            if (siteConfig && siteConfig.skipRequestModification) {
+                console.log('[MCP Bridge] Skip request modification for:', url);
+                return options;
+            }
             
             const responsePayload = await sendMessageAndWaitForResponse('FETCH_REQUEST_BODY', { url, body: options.body });
             
@@ -86,6 +92,14 @@
     ah.proxy({
         onRequest: async (config, handler) => {
             if (!shouldInterceptRequest(config.url)) {
+                handler.next(config);
+                return;
+            }
+
+            // 检查是否需要跳过请求修改（仅监听响应）
+            const siteConfig = getSiteConfig(config.url);
+            if (siteConfig && siteConfig.skipRequestModification) {
+                console.log('[MCP Bridge] Skip request modification for:', config.url);
                 handler.next(config);
                 return;
             }

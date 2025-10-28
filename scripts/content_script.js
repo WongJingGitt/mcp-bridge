@@ -45,6 +45,9 @@ async function main() {
     // 立即创建常驻面板
     statusPanel = new StatusPanel();
     statusPanel.create(); // 初始化常驻面板
+    
+    // 检查并显示页面加载提示
+    await checkAndShowOnLoadTip(api_list, currentHostname);
 
     window.addEventListener('message', (event) => {
         if (event.source !== window || !event.data) {
@@ -301,6 +304,95 @@ function handlePanelMessage(data) {
             
         default:
             console.warn('[MCP Bridge] Unknown panel message type:', type);
+    }
+}
+
+/**
+ * 检查并显示页面加载提示
+ * @param {Array} apiList - API 配置列表
+ * @param {string} hostname - 当前网站域名
+ */
+async function checkAndShowOnLoadTip(apiList, hostname) {
+    try {
+        // 查找当前网站的配置
+        const siteConfig = apiList.find(item => item.hostname === hostname);
+        
+        // 如果没有配置 onLoadTip，直接返回
+        if (!siteConfig || !siteConfig.onLoadTip) {
+            return;
+        }
+        
+        const { onLoadTip } = siteConfig;
+        
+        // 检查本地存储，看用户是否选择了"不再提示"
+        const storageKey = `mcp_bridge_onload_tip_disabled_${hostname}`;
+        const isDisabled = localStorage.getItem(storageKey) === 'true';
+        
+        if (isDisabled) {
+            console.log('[MCP Bridge] OnLoad tip disabled for this site');
+            return;
+        }
+        
+        // 等待页面完全加载
+        if (document.readyState !== 'complete') {
+            await new Promise(resolve => {
+                window.addEventListener('load', resolve, { once: true });
+            });
+        }
+        
+        // 额外延迟（如果配置了）
+        const delay = onLoadTip.delay || 500;
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        // 处理 message 字段：支持字符串或数组
+        let message = '';
+        if (Array.isArray(onLoadTip.message)) {
+            // 数组格式：过滤非字符串/数值，然后用换行连接
+            message = onLoadTip.message
+                .filter(item => typeof item === 'string' || typeof item === 'number')
+                .map(item => String(item))
+                .join('\n');
+        } else {
+            // 字符串格式（兼容旧版本）
+            message = String(onLoadTip.message || '');
+        }
+        
+        // 如果处理后消息为空，不显示
+        if (!message.trim()) {
+            console.warn('[MCP Bridge] OnLoad tip message is empty after processing');
+            return;
+        }
+        
+        // 动态导入 confirm_dialog
+        const confirmDialogUrl = chrome.runtime.getURL('ui/confirm_dialog.js');
+        const { ConfirmDialog } = await import(confirmDialogUrl);
+        
+        const dialog = new ConfirmDialog();
+        
+        // 显示提示对话框
+        const result = await dialog.show({
+            title: onLoadTip.title || 'MCP Bridge 提示',
+            message: message,
+            confirmText: onLoadTip.confirmText || '我知道了',
+            cancelText: onLoadTip.cancelText || '关闭',
+            type: onLoadTip.type || 'default',
+            showDontShowAgain: true,
+            dontShowAgainText: onLoadTip.dontShowAgainText || '不再提示'
+        });
+        
+        console.log('[MCP Bridge] OnLoad tip result:', result);
+        
+        // 如果用户勾选了"不再提示"
+        if (result && result.dontShowAgain) {
+            localStorage.setItem(storageKey, 'true');
+            console.log('[MCP Bridge] OnLoad tip disabled by user');
+        }
+        
+        // 清理对话框
+        dialog.destroy();
+        
+    } catch (error) {
+        console.error('[MCP Bridge] Error showing onLoad tip:', error);
     }
 }
 

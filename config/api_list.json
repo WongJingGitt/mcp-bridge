@@ -169,5 +169,44 @@
       "submitModifiers": [],
       "submitDelay": 1600
     }
+  },
+  {
+    "name": "google_aistudio",
+    "hostname": "aistudio.google.com",
+    "label": "Google AI Studio",
+    "api": ["/GenerateContent"],
+    "promptPath": "message",
+    "isJsonString": false,
+    "enabled": true,
+    "defaultAlwaysInject": true,
+    "skipRequestModification": true,
+    "response": {
+      "type": "json",
+      "format": "{json}",
+      "contentPaths": ["content", "text", "message"]
+    },
+    "input": {
+      "selector": "textarea, [contenteditable='true']",
+      "submitKey": "Enter",
+      "submitModifiers": ["Ctrl"],
+      "submitDelay": 1600
+    },
+    "uiParsing": {
+      "enabled": true,
+      "priority": "ui",
+      "messageContainer": "ms-chat-turn",
+      "messageIndex": -1,
+      "contentSelector": ""
+    },
+    "onLoadTip": {
+      "message": [
+        "Google AI Studio不支持自动注入System Prompt功能",
+        "",
+        "请在每次新建对话后，在插件面板中点击刷新System Prompt，手动注入System Prompt内容",
+        "同时，该网站不支持自动读取模型的工具回复，需要在右下角浮窗中，点击时钟图标手动识别"
+
+      ],
+      "dontShowAgainText": "不再显示此提示"
+    } 
   }
 ]
