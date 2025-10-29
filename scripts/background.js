@@ -140,6 +140,14 @@ async function handleRequestBody(tabId, payload) {
     const siteConfig = getSiteConfig(payload.url, api_list);
     if (!siteConfig) return createResponse(payload.body);
 
+    // 检查是否跳过请求修改（仅监听响应模式）
+    if (siteConfig.skipRequestModification) {
+        console.log('[MCP Bridge] Skip request modification, only monitoring response');
+        // 即使跳过请求修改，也要设置状态为等待响应，以便检测工具调用
+        await setTabState(tabId, {status: 'AWAITING_RESPONSE', currentToolCall: null, resultInjected: false});
+        return createResponse(payload.body);
+    }
+
     const bodyJson = parseJsonSafely(payload.body);
     if (!bodyJson) return createResponse(payload.body);
 
