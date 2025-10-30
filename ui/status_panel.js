@@ -14,7 +14,6 @@ export class StatusPanel {
         this.isExpanded = true; // 默认展开
         this.isPermanent = true; // 常驻模式
         this.isMinimized = false; // 最小化状态
-        this.userMinimized = false; // 用户是否主动最小化（不持久化，仅当前会话）
         this.isDragging = false; // 拖拽状态
         this.dragStarted = false; // 拖拽是否已开始
         this.dragOffset = { x: 0, y: 0 }; // 拖拽偏移
@@ -22,8 +21,9 @@ export class StatusPanel {
         this.idleTimer = null; // 闲置计时器
         this.lastActiveTime = Date.now(); // 最后活跃时间
         
-        // 加载保存的位置
+        // 加载保存的位置和状态
         this.loadPosition();
+        this.loadMinimizedState();
     }
     
     /**
@@ -50,6 +50,31 @@ export class StatusPanel {
             }
         } catch (e) {
             console.log('[MCP Bridge] Failed to save panel position:', e);
+        }
+    }
+    
+    /**
+     * 从 localStorage 加载最小化状态
+     */
+    loadMinimizedState() {
+        try {
+            const saved = localStorage.getItem('mcp-bridge-panel-minimized');
+            if (saved !== null) {
+                this.isMinimized = saved === 'true';
+            }
+        } catch (e) {
+            console.log('[MCP Bridge] Failed to load minimized state:', e);
+        }
+    }
+    
+    /**
+     * 保存最小化状态到 localStorage
+     */
+    saveMinimizedState() {
+        try {
+            localStorage.setItem('mcp-bridge-panel-minimized', this.isMinimized.toString());
+        } catch (e) {
+            console.log('[MCP Bridge] Failed to save minimized state:', e);
         }
     }
 
@@ -134,18 +159,29 @@ export class StatusPanel {
     `;
         this.shadowRoot.appendChild(panel);
 
-        // 5. 应用自定义位置
-        if (this.position) {
-            panel.style.left = this.position.left + 'px';
-            panel.style.top = this.position.top + 'px';
-            panel.style.right = 'auto';
-            panel.style.bottom = 'auto';
+        // 5. 应用保存的最小化状态
+        if (this.isMinimized) {
+            panel.classList.add('minimized');
         }
 
-        // 6. 绑定事件
+        // 6. 应用自定义位置，并检查是否会溢出
+        if (this.position) {
+            // 如果不是最小化状态，检查位置是否会导致溢出
+            if (!this.isMinimized) {
+                this.adjustPositionOnExpand(panel, this.position);
+            } else {
+                // 最小化状态直接应用位置
+                panel.style.left = this.position.left + 'px';
+                panel.style.top = this.position.top + 'px';
+                panel.style.right = 'auto';
+                panel.style.bottom = 'auto';
+            }
+        }
+
+        // 7. 绑定事件
         this.bindEvents(panel);
         
-        // 7. 启动闲置检测
+        // 8. 启动闲置检测
         this.startIdleDetection();
         
         // 默认显示
@@ -337,24 +373,79 @@ export class StatusPanel {
      * @param {boolean} fromUser - 是否由用户主动触发
      */
     toggleMinimize(fromUser = false) {
+        const wasMinimized = this.isMinimized;
         this.isMinimized = !this.isMinimized;
         const panel = this.shadowRoot.querySelector('.mcp-status-panel');
         
         if (this.isMinimized) {
             panel.classList.add('minimized');
-            // 如果是用户主动最小化，记录状态
-            if (fromUser) {
-                this.userMinimized = true;
-            }
         } else {
             panel.classList.remove('minimized');
-            // 用户手动展开，清除标记
-            if (fromUser) {
-                this.userMinimized = false;
+            
+            // 从最小化展开时，检查并调整位置防止溢出
+            if (wasMinimized && this.position) {
+                this.adjustPositionOnExpand(panel);
             }
         }
         
+        // 保存最小化状态
+        this.saveMinimizedState();
         this.markActive();
+    }
+    
+    /**
+     * 展开时调整位置，防止溢出屏幕
+     * @param {HTMLElement} panel - 面板元素
+     * @param {Object} [customPosition] - 可选的自定义位置，如果不提供则使用 this.position
+     */
+    adjustPositionOnExpand(panel, customPosition = null) {
+        const EXPANDED_WIDTH = 440;
+        const EXPANDED_MIN_HEIGHT = 200; // 预估的最小高度
+        const MARGIN = 20;
+        
+        const position = customPosition || this.position;
+        if (!position) return;
+        
+        let { left, top } = position;
+        let adjusted = false;
+        
+        // 检查右侧是否溢出
+        const maxLeft = window.innerWidth - EXPANDED_WIDTH - MARGIN;
+        if (left > maxLeft) {
+            left = Math.max(MARGIN, maxLeft);
+            adjusted = true;
+        }
+        
+        // 检查左侧是否溢出
+        if (left < MARGIN) {
+            left = MARGIN;
+            adjusted = true;
+        }
+        
+        // 检查底部是否溢出
+        const maxTop = window.innerHeight - EXPANDED_MIN_HEIGHT - MARGIN;
+        if (top > maxTop) {
+            top = Math.max(MARGIN, maxTop);
+            adjusted = true;
+        }
+        
+        // 检查顶部是否溢出
+        if (top < MARGIN) {
+            top = MARGIN;
+            adjusted = true;
+        }
+        
+        // 更新位置（无论是否调整都要应用）
+        this.position = { left, top };
+        panel.style.left = left + 'px';
+        panel.style.top = top + 'px';
+        panel.style.right = 'auto';
+        panel.style.bottom = 'auto';
+        
+        // 如果位置被调整，保存
+        if (adjusted) {
+            this.savePosition();
+        }
     }
     
     /**
@@ -529,24 +620,12 @@ export class StatusPanel {
         // 更新面板的 data-state 属性以应用不同的样式
         panel.dataset.state = status.toUpperCase();
         
+        // 智能展开：仅在错误时自动展开
         const isError = status.toUpperCase() === 'ERROR';
-        const isExecuting = status.toUpperCase() === 'EXECUTING';
         
-        // 智能展开逻辑：
-        // 1. 如果是错误状态，总是展开（无论用户之前是否最小化）
-        // 2. 如果是执行状态，只在用户未主动最小化时展开
-        if (isError) {
+        if (isError && this.isMinimized) {
             this.markActive();
-            if (this.isMinimized) {
-                this.toggleMinimize(false); // 自动展开，不清除用户最小化标记
-                this.userMinimized = false; // 但错误时重置标记，允许后续自动展开
-            }
-        } else if (isExecuting && !this.userMinimized) {
-            // 只在用户没有主动最小化时才自动展开
-            this.markActive();
-            if (this.isMinimized) {
-                this.toggleMinimize(false); // 自动展开
-            }
+            this.toggleMinimize(false); // 自动展开
         }
 
         let iconHtml = '';

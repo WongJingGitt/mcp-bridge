@@ -33,6 +33,9 @@
     opacity: 0;
     transform: translateY(20px) scale(0.95);
     cursor: move; /* 提示可拖拽 */
+    
+    /* 防止展开时溢出屏幕 */
+    max-height: calc(100vh - 40px);
 }
 
 .mcp-status-panel.visible {
