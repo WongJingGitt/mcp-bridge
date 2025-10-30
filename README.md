@@ -294,7 +294,64 @@ MCP Bridge 采用 **三层架构设计**：
 
 ---
 
-## 📁 项目结构
+## � 文档导航
+
+完整的项目文档帮助你深入了解和使用 MCP Bridge：
+
+### 用户文档
+
+- **[用户使用手册](docs/USER_GUIDE.md)** 📖
+  - 安装指南（浏览器扩展 + 桥接服务）
+  - 配置指南（MCP 工具配置）
+  - 使用教程（从入门到精通）
+  - 常见问题解答
+  - 故障排除
+
+### 技术文档
+
+- **[核心架构文档](docs/ARCHITECTURE.md)** 🏗️
+  - 三层架构设计详解
+  - 核心组件说明
+  - 数据流程分析
+  - 关键技术决策
+  - 扩展性设计
+
+- **[四层保障机制](docs/FALLBACK_MECHANISMS.md)** 🛡️
+  - API 解析机制
+  - UI DOM 解析机制
+  - 重新检测机制
+  - 手动输入兜底
+  - 机制切换流程
+
+### 开发文档
+
+- **[开发指南](docs/DEVELOPMENT.md)** 💻
+  - 开发环境设置
+  - 调试技巧大全
+  - 添加新平台支持
+  - 代码规范
+  - 开发工作流
+
+- **[API 配置完全指南](docs/API_CONFIG_GUIDE.md)** ⚙️
+  - 配置文件结构详解
+  - 所有字段详细说明
+  - 配置示例库
+  - 常见场景解决方案
+  - 配置调试技巧
+
+### 快速链接
+
+| 文档 | 适合人群 | 内容概要 |
+|------|----------|----------|
+| [用户使用手册](docs/USER_GUIDE.md) | 所有用户 | 安装、配置、使用 |
+| [核心架构](docs/ARCHITECTURE.md) | 开发者、技术爱好者 | 系统设计和实现原理 |
+| [开发指南](docs/DEVELOPMENT.md) | 贡献者、开发者 | 如何参与开发 |
+| [API 配置指南](docs/API_CONFIG_GUIDE.md) | 高级用户、开发者 | 添加新平台支持 |
+| [四层保障机制](docs/FALLBACK_MECHANISMS.md) | 技术爱好者 | 工具调用的可靠性保障 |
+
+---
+
+## �📁 项目结构
 
 ```
 mcp_bridge/                    # 浏览器扩展
@@ -337,122 +394,49 @@ mcp_bridge_server/             # 桥接服务
 
 ## 🛠️ 开发指南
 
-### 添加对新 AI 平台的支持
+想要为 MCP Bridge 添加新功能或支持新平台？查看我们的完整开发文档：
 
-编辑 `config/api_list.json`，添加平台配置：
+### 快速开始开发
+
+1. **阅读** [开发指南](docs/DEVELOPMENT.md) 了解项目结构和开发流程
+2. **参考** [API 配置指南](docs/API_CONFIG_GUIDE.md) 添加新平台支持
+3. **理解** [核心架构](docs/ARCHITECTURE.md) 深入了解系统设计
+
+### 添加新平台的简化流程
+
+详细步骤请参考 [开发指南 - 添加新平台支持](docs/DEVELOPMENT.md#添加新平台支持)
+
+1. **分析平台**: 查看网络请求，确定 API 路径和数据格式
+2. **编写配置**: 在 `config/api_list.json` 添加平台配置
+3. **更新清单**: 在 `manifest.json` 添加域名权限
+4. **测试功能**: 验证工具调用是否正常工作
+
+### 核心配置示例
 
 ```json
 {
-  "name": "platform-id",
-  "hostname": "chat.example.com",
+  "name": "platform_id",
+  "hostname": "platform.example.com",
   "label": "平台名称",
-  "api": ["api/chat"],
-  "promptPath": "messages[0].content",
-  "isJsonString": false,
-  "enabled": true,
-  "defaultAlwaysInject": false,
+  "api": ["/api/chat"],
+  "promptPath": "prompt",
   "response": {
     "type": "sse",
-    "format": "data: {json}\\n\\n",
-    "contentPaths": ["choices[0].delta.content"]
+    "contentPaths": ["content"]
   },
-  "uiParsing": {
-    "enabled": true,
-    "priority": "api",
-    "messageContainer": ".message",
-    "messageIndex": -1
+  "input": {
+    "selector": "textarea",
+    "submitKey": "Enter"
   }
 }
 ```
 
-### 配置字段说明
-
-<details>
-<summary><b>基础配置</b></summary>
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `name` | string | 平台唯一标识 |
-| `hostname` | string | 平台域名 |
-| `label` | string | 平台显示名称 |
-| `api` | array | API 路径片段数组 |
-| `promptPath` | string | 提示词字段路径 |
-| `isJsonString` | boolean | 提示词是否为 JSON 字符串 |
-| `enabled` | boolean | 是否启用 |
-| `defaultAlwaysInject` | boolean | 默认是否总是注入 |
-
-</details>
-
-<details>
-<summary><b>响应解析配置 (response)</b></summary>
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `type` | string | 响应类型：`sse` / `json` / `text` |
-| `format` | string | SSE 数据格式（仅 SSE 需要） |
-| `contentPaths` | array | 内容提取路径数组 |
-| `filterRules` | object | 数据过滤规则（可选） |
-
-</details>
-
-<details>
-<summary><b>UI 解析配置 (uiParsing)</b></summary>
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `enabled` | boolean | 是否启用 UI 解析 |
-| `priority` | string | 优先级：`api` / `ui` |
-| `messageContainer` | string | 消息容器 CSS 选择器 |
-| `messageIndex` | number | 消息索引（-1 表示最后一条） |
-| `contentSelector` | string | 内容选择器（可选） |
-
-</details>
-
-### 调试技巧
-
-1. **查看控制台日志** - 打开浏览器开发者工具（F12），切换到 Console 标签
-2. **查看网络请求** - 切换到 Network 标签，过滤 `localhost:3849`
-3. **测试 UI 选择器** - 在控制台运行：
-   ```javascript
-   document.querySelectorAll('.your-selector')
-   ```
-4. **查看存储数据** - Application → Storage → Extension Storage
+完整的字段说明请查看 [API 配置完全指南](docs/API_CONFIG_GUIDE.md)
 
 ---
 
-## � 文档导航
+## 📚 文档导航
 
-### 📖 核心文档
-
-| 文档 | 说明 |
-|------|------|
-| [README.md](README.md) | 项目总览和快速开始（本文档） |
-| [桥接服务 README](https://github.com/WongJingGitt/mcp_bridge_server/blob/master/README.md) | 服务端文档和 API 说明 |
-| [架构设计文档](docs/ARCHITECTURE.md) | 系统架构与技术选型 |
-| [开发者指南](docs/DEVELOPER_GUIDE.md) | 代码结构与开发指南 |
-| [文档索引](docs/INDEX.md) | 完整文档导航和使用场景指引 |
-
-### 🎯 功能指南
-
-| 文档 | 说明 |
-|------|------|
-| [兜底机制使用指南](docs/FALLBACK_GUIDE.md) | 四层保障机制详解 |
-| [API 配置完全指南](docs/API_CONFIG_GUIDE.md) | api_list.json 配置说明 |
-| [响应解析配置指南](docs/RESPONSE_CONFIG_GUIDE.md) | 响应解析和过滤规则 |
-| [错误处理机制](docs/ERROR_HANDLING.md) | 错误处理流程和调试技巧 |
-| [多路径注入示例](docs/MULTI_PROMPTPATH_EXAMPLE.md) | 多字段同时注入 Prompt |
-
-### ✨ 特性文档
-
-| 文档 | 说明 |
-|------|------|
-| [重新检测功能](docs/REDETECT_FEATURE.md) | 断点续传实现说明 |
-| [刷新 Prompt 功能](docs/REFRESH_PROMPT_FEATURE.md) | System Prompt 刷新机制 |
-| [快速刷新指南](docs/REFRESH_PROMPT_QUICK_GUIDE.md) | 刷新功能快速上手 |
-| [UI 现代化指南](docs/UI_MODERNIZATION_GUIDE.md) | 界面改进历史 |
-| [数组根路径配置](docs/ARRAY_ROOT_CONFIG.md) | 数组格式配置说明 |
-| [服务管理功能](docs/SERVICE_MANAGER_FEATURES.md) | 服务管理器功能文档 |
-| [状态面板功能](docs/STATUS_PANEL_FEATURES.md) | 状态面板功能文档 |
 
 ---
 
