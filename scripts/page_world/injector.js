@@ -170,16 +170,6 @@
                     
                     const hasToolCodeStart = parsedContent.includes('<tool_code>');
                     const hasToolCodeEnd = parsedContent.includes('</tool_code>');
-                    
-                    // 只在检测到工具代码时才输出调试信息
-                    if (hasToolCodeStart || hasToolCodeEnd) {
-                        console.log('[MCP Bridge] 🔧 Tool detected:', {
-                            length: parsedContent.length,
-                            hasStart: hasToolCodeStart,
-                            hasEnd: hasToolCodeEnd,
-                            preview: parsedContent.substring(0, 300)
-                        });
-                    }
 
                     xhrInfo.accumulatedText = parsedContent;
                     xhrInfo.lastProcessedLength = responseText.length;
@@ -292,13 +282,6 @@
             }
         }
         
-        // 如果累积内容中包含 tool,输出调试信息
-        if (accumulatedContent.includes('tool')) {
-            console.log('[MCP Bridge] 📝 SSE extracted tool-related chars:', debugLog.join('|'));
-            if (skippedData.length > 0) {
-                console.log('[MCP Bridge] ⚠️ Skipped data containing tool/< :', skippedData);
-            }
-        }
 
         return accumulatedContent;
     }
@@ -492,12 +475,10 @@
         try {
             const apiList = JSON.parse(localStorage.getItem('mcp_api_list') || '[]');
             if (!apiList || !url) {
-                console.log('[MCP Bridge] apiList or url is empty');
                 return false;
             }
             
             const currentHostname = window.location.hostname;
-            console.log('[MCP Bridge] Current hostname:', currentHostname);
             
             const shouldIntercept = apiList.some(apiItem => {
                 if (apiItem.hostname !== currentHostname) return false;
@@ -508,7 +489,6 @@
                 });
             });
             
-            console.log('[MCP Bridge] Should intercept:', shouldIntercept);
             return shouldIntercept;
         } catch (e) {
             console.error('MCP Bridge: Error in shouldInterceptRequest:', e);
