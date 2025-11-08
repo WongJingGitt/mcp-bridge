@@ -37,34 +37,28 @@ export async function injectTextAndSubmit(text, inputConfig) {
             throw new Error(`Input element not found: ${inputConfig.selector}`);
         }
         
-        console.log('INPUT VALUE TEXT', inputElement.value, inputElement.textContent);
-        console.log('INPUT VALUE ASSERT', inputElement.value === text, inputElement.textContent === text)
-
         // 聚焦输入框
         inputElement.focus();
         await sleep(delays.afterFocus);
+        
+        const finalText = `
+<tool_result>
+${text}
+</tool_result>`
 
         // 注入文本（支持 React/Vue）
-        setInputValue(inputElement, text);
+        setInputValue(inputElement, finalText);
         await sleep(delays.afterInput);
 
-        // 再次确保内容已设置
-        console.log('[MCP Bridge] Verifying content...', {
-            expectedLength: text.length,
-            actualValue: inputElement.value?.length || inputElement.textContent?.length
-        });
 
         // 如果配置了 submitKey，则等待并自动发送
         if (inputConfig.submitKey) {
             // 等待一段时间让 UI 更新
             await sleep(delays.beforeSubmit);
 
-            // 触发发送按键
-            console.log('[MCP Bridge] Triggering submit after delay...');
             simulateKeyPress(inputElement, inputConfig.submitKey, inputConfig.submitModifiers || []);
             await sleep(delays.afterSubmit);
 
-            console.log('[MCP Bridge] Text injected and submitted successfully');
         } else {
             console.log('[MCP Bridge] Text injected (auto-submit disabled, waiting for user input)');
         }
@@ -105,7 +99,6 @@ function findInputElement(selector) {
     for (const fallbackSelector of fallbackSelectors) {
         element = document.querySelector(fallbackSelector);
         if (element && isVisible(element)) {
-            console.log('[MCP Bridge] Using fallback selector:', fallbackSelector);
             return element;
         }
     }
@@ -177,7 +170,6 @@ function simulateKeyPress(element, key, modifiers = []) {
         metaKey: modifiers.includes('Meta') || modifiers.includes('Cmd')
     };
 
-    console.log('[MCP Bridge] Simulating key press:', keyboardEventInit);
 
     element.dispatchEvent(new KeyboardEvent('keydown', keyboardEventInit));
     element.dispatchEvent(new KeyboardEvent('keypress', keyboardEventInit));
