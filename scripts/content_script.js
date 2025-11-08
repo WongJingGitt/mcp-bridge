@@ -14,9 +14,9 @@ async function main() {
     // 检查当前网站是否在 api_list 中
     const currentHostname = window.location.hostname;
     const { api_list = [] } = await chrome.storage.local.get('api_list');
-    const isSupported = api_list.some(item => item.hostname === currentHostname);
-    
-    if (!isSupported) {
+    const currentConfig = api_list.find(item => item.hostname === currentHostname);
+
+    if (!currentConfig) {
         // 仍然监听消息,以便处理注入脚本的通信
         window.addEventListener('message', (event) => {
             if (event.source !== window || !event.data) {
@@ -49,6 +49,7 @@ async function main() {
     // 检查并显示页面加载提示
     await checkAndShowOnLoadTip(api_list, currentHostname);
 
+    addStyleSheet(currentConfig?.uiParsing || {});
     window.addEventListener('message', (event) => {
         if (event.source !== window || !event.data) {
             return;
@@ -71,6 +72,18 @@ async function main() {
         handleBackgroundMessage(message, sender, sendResponse, StatusPanel);
         return true;
     });
+}
+
+function addStyleSheet(uiConfig) {
+    if (!uiConfig?.senderSelector) return;
+    const style = document.createElement('style');
+    style.innerHTML = `
+${uiConfig.senderSelector} {
+    max-height: 300px;
+    overflow-y: auto;
+}
+    `;
+    document.head.appendChild(style);
 }
 
 function handleInjectorMessage(data) {

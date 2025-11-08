@@ -22,7 +22,8 @@
       "priority": "ui",
       "messageContainer": ".ds-message",
       "messageIndex": -1,
-      "contentSelector": ".ds-markdown"
+      "contentSelector": ".ds-markdown",
+      "senderSelector": ".ds-message:not(:has(.ds-markdown)) div"
     },
     "input": {
       "selector": "textarea, [contenteditable='true']",
@@ -50,7 +51,8 @@
       "priority": "ui",
       "messageContainer": ".hyc-content-md",
       "messageIndex": -1,
-      "contentSelector": ".hyc-common-markdown"
+      "contentSelector": ".hyc-common-markdown",
+      "senderSelector": ".hyc-content-text"
     },
     "input": {
       "selector": "textarea, [contenteditable='true']",
@@ -85,7 +87,8 @@
       "priority": "ui",
       "messageContainer": ".tongyi-markdown",
       "messageIndex": -1,
-      "contentSelector": ""
+      "contentSelector": "",
+      "senderSelector": "div[class^='questionItem-'] div[class^='bubble-']"
     },
     "input": {
       "selector": "textarea, [contenteditable='true']",
@@ -132,9 +135,10 @@
     "uiParsing": {
       "enabled": true,
       "priority": "ui",
-      "messageContainer": "div[data-testid=\"message_text_content\"]",
+      "messageContainer": "div[data-testid=\"receive_message\"] div[data-testid=\"message_text_content\"]",
       "messageIndex": -1,
-      "contentSelector": ""
+      "contentSelector": "",
+      "senderSelector": "div[data-testid=\"send_message\"] div[data-testid=\"message_text_content\"]"
     },
     "input": {
       "selector": "textarea, [contenteditable='true']",
