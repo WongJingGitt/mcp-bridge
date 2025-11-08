@@ -116,14 +116,16 @@ export async function getServices() {
 /**
  * 根据服务名称获取该服务下的所有具体工具 (第二层发现)。
  * @param {string} serverName - 服务名称。
- * @returns {Promise<Array<Object>>} - 工具列表。
+ * @returns {Promise<{service_name: string, service_description: string, tools: Array<Object>}>} - 包含服务信息和工具列表的对象。
  */
 export async function getToolsByServer(serverName) {
     const baseUrl = await getBaseUrl();
     const url = new URL(`${baseUrl}/tools`);
     url.searchParams.append('serverName', serverName);
     const data = await fetchWithTimeout(url.toString());
-    if (data && data.success && Array.isArray(data.tools)) {
+    if (data && data.success) {
+        // 服务端现在返回 { success: true, tools: { service_name, service_description, tools: [...] } }
+        // 或者可能是 { success: true, tools: {...} }
         return data.tools;
     }
     throw new Error(`从 Bridge 服务获取 "${serverName}" 的工具列表失败。`);
