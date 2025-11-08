@@ -198,9 +198,7 @@ function parseUIContent(uiConfig) {
     }
 
     try {
-        const containers = document.querySelectorAll(uiConfig.messageContainer);
-        console.log('[MCP Bridge] parseUIContent: Found containers:', containers.length);
-        
+        const containers = document.querySelectorAll(uiConfig.messageContainer);        
         if (!containers || containers.length === 0) {
             console.warn('[MCP Bridge] parseUIContent: No containers found for selector:', uiConfig.messageContainer);
             return '';
@@ -222,7 +220,6 @@ function parseUIContent(uiConfig) {
             const selected = messageContainer.querySelector(uiConfig.contentSelector);
             if (selected) {
                 contentElement = selected;
-                console.log('[MCP Bridge] parseUIContent: Using content selector:', uiConfig.contentSelector);
             } else {
                 console.warn('[MCP Bridge] parseUIContent: Content selector not found:', uiConfig.contentSelector);
             }
@@ -230,7 +227,6 @@ function parseUIContent(uiConfig) {
 
         // 提取文本内容
         const content = contentElement.innerText || contentElement.textContent || '';
-        console.log('[MCP Bridge] parseUIContent: Extracted content length:', content.length);
         return content;
     } catch (error) {
         console.error('[MCP Bridge] Failed to parse UI content:', error);
