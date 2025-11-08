@@ -38,7 +38,6 @@
     hookFetch({
         optionsHook: async function(options, url) {
             if (!shouldInterceptRequest(url)) {
-                console.log('[MCP Bridge] Request not in API list, skipping');
                 return options;
             }
             
@@ -56,7 +55,7 @@
                 options.body = responsePayload.modifiedBody;
             }
             return options;
-        },
+        }, // 2001 文字 2070 编程
 
         responseHook: async function(response) {
             if (!shouldInterceptRequest(response.url)) return response;
@@ -442,7 +441,6 @@
 
                         // 每累积一定长度或检测到tool_code标签时发送更新
                         if (accumulatedText.length - lastSentLength > 100 || accumulatedText.includes('</tool_code>')) {
-                            console.log('[MCP Bridge] Stream chunk, accumulated length:', accumulatedText.length);
                             window.postMessage({
                                 source: MESSAGE_SOURCE,
                                 direction: 'to-content-script',
