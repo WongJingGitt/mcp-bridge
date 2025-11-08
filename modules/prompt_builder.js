@@ -7,15 +7,25 @@
 
 /**
  * 构建在新对话开始时注入的初始 System Prompt。
- * 这个 Prompt 采用“分层式工具发现”策略。
+ * 这个 Prompt 采用"分层式工具发现"策略。
  *
- * @param {Array<Object>} services - 从 MCP Bridge Server 获取的服务列表，每个对象包含 { name, description }。
+ * @param {Array<Object>} services - 从 MCP Bridge Server 获取的服务列表，每个对象包含 { name, description, is_core }。
  * @returns {string} - 格式化后的完整 Prompt 文本。
  */
 export function buildInitialPrompt(services) {
-    const serviceListText = services.length > 0
-        ? services.map(s => `- **${s.name}**: ${s.description}`).join('\n')
-        : "- 当前没有任何可用的工具服务。";
+    // 根据 is_core 字段分组服务
+    const coreServices = services.filter(s => s.is_core === true);
+    const otherServices = services.filter(s => s.is_core !== true);
+    
+    // 核心服务：展示完整描述
+    const coreServiceListText = coreServices.length > 0
+        ? coreServices.map(s => `- **${s.name}**: ${s.description}`).join('\n')
+        : "- 暂无核心服务";
+    
+    // 其他服务：仅展示名称
+    const otherServiceListText = otherServices.length > 0
+        ? otherServices.map(s => `- ${s.name}`).join('\n')
+        : "- 暂无其他服务";
 
     return `
 # 系统增强功能
@@ -26,7 +36,11 @@ export function buildInitialPrompt(services) {
 
 ## 当前可用的服务
 
-${serviceListText}
+### 核心服务（常用功能，已展示完整描述）
+${coreServiceListText}
+
+### 其他服务（按需使用，仅展示名称）
+${otherServiceListText}
 
 ## 工具使用流程
 
@@ -34,9 +48,9 @@ ${serviceListText}
 
 深度理解用户的需求，判断用户是否有涉及到任何工具相关的请求。
 
-### 第二步：发现具体工具
+### 第二步：查看服务的工具列表
 
-如果你决定使用某个服务的工具，先用 \`list_tools_in_service\` 查询该服务下的所有工具：
+**无论是核心服务还是其他服务**，在决定使用某个服务后，都需要先调用 \`list_tools_in_service\` 查看该服务的详细信息：
 
 \`\`\`xml
 <tool_code>
@@ -49,7 +63,11 @@ ${serviceListText}
 </tool_code>
 \`\`\`
 
-系统会返回该服务的工具列表，包含每个工具的名称、描述和参数定义。
+系统会返回该服务的**完整信息**，包括：
+- **服务描述**（对于其他服务特别重要，因为初始 Prompt 中未展示）
+- **工具列表**：每个工具的名称、描述和参数定义
+
+然后根据返回结果选择合适的工具调用。
 
 ### 第三步：调用具体工具
 
@@ -83,49 +101,6 @@ ${serviceListText}
 
 - 工具调用失败会返回错误信息，你可以调整参数重试（最多 3 次）
 - 如果无法解决，诚实告知用户原因
-
-## 完整示例
-
-**用户**: "今天天气怎么样？"
-
-**你的回复**:
-我可以帮你查询天气信息。让我先看看有哪些工具可用：
-\`\`\`xml
-<tool_code>
-{
-  "tool_name": "list_tools_in_service",
-  "arguments": {
-    "service_name": "weather_service"
-  }
-}
-</tool_code>
-\`\`\`
-
-**系统返回**: [工具列表]
-
-**你的回复**:
-\`\`\`xml
-<tool_code>
-{
-  "tool_name": "get_weather",
-  "arguments": {
-    "location": "current"
-  }
-}
-</tool_code>
-\`\`\`
-
-**系统返回**: {"temperature": 22, "condition": "晴"}
-
-**你的回复**:
-今天天气不错！当前温度 22°C，天气晴朗。适合出门活动。
-
----
-
-**用户**: "什么是量子计算？"
-
-**你的回复**:
-量子计算是一种利用量子力学原理进行信息处理的计算方式...(直接回答，不调用工具)
 
 ---
 
