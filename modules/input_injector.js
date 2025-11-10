@@ -120,9 +120,40 @@ function setInputValue(element, value) {
     const isContentEditable = element.contentEditable === 'true';
 
     if (isContentEditable) {
-        // contenteditable 元素
-        element.textContent = value;
-        element.innerHTML = value; // 某些框架可能需要这个
+        // contenteditable 元素 - 使用更可靠的方法
+        
+        // 方法1: 先清空再插入（模拟用户行为）
+        element.focus();
+        
+        // 选中所有内容
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        
+        // 触发 beforeinput 事件（现代框架依赖此事件）
+        element.dispatchEvent(new InputEvent('beforeinput', {
+            bubbles: true,
+            cancelable: true,
+            inputType: 'insertText',
+            data: value
+        }));
+        
+        // 尝试使用 execCommand（虽然已废弃，但兼容性最好）
+        try {
+            document.execCommand('insertText', false, value);
+        } catch (e) {
+            // 如果 execCommand 失败，使用 DOM 操作
+            element.textContent = value;
+        }
+        
+        // 将光标移到末尾
+        range.selectNodeContents(element);
+        range.collapse(false);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        
     } else {
         // textarea 或 input
         const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
@@ -141,11 +172,12 @@ function setInputValue(element, value) {
     }
 
     // 触发所有可能的事件，确保框架检测到变化
+    // 注意：对于 contenteditable，某些事件已经在上面触发过了
     const events = [
-        new Event('input', { bubbles: true, cancelable: true }),
+        new InputEvent('input', { bubbles: true, cancelable: true, inputType: 'insertText', data: value }),
         new Event('change', { bubbles: true, cancelable: true }),
-        new Event('keydown', { bubbles: true, cancelable: true }),
-        new Event('keyup', { bubbles: true, cancelable: true })
+        new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'Unidentified' }),
+        new KeyboardEvent('keyup', { bubbles: true, cancelable: true, key: 'Unidentified' })
     ];
 
     events.forEach(event => {
