@@ -144,7 +144,7 @@ async function handleRequestBody(tabId, payload) {
     if (siteConfig.skipRequestModification) {
         console.log('[MCP Bridge] Skip request modification, only monitoring response');
         // 即使跳过请求修改，也要设置状态为等待响应，以便检测工具调用
-        await setTabState(tabId, {status: 'AWAITING_RESPONSE', currentToolCall: null, resultInjected: false});
+        await setTabState(tabId, {status: 'AWAITING_RESPONSE', currentToolCallKey: null, resultInjected: false});
         return createResponse(payload.body);
     }
 
@@ -173,12 +173,13 @@ async function handleRequestBody(tabId, payload) {
 
         const modifiedBody = JSON.stringify(bodyJson);
         // 新对话开始，清除之前的工具调用状态
-        await setTabState(tabId, {status: 'AWAITING_RESPONSE', currentToolCall: null, resultInjected: false});
+        await setTabState(tabId, {status: 'AWAITING_RESPONSE', currentToolCallKey: null, resultInjected: false});
         return createResponse(modifiedBody);
     }
 
-    // 即使不注入 prompt，也清除上一次的结果注入标记（新的用户消息）
-    await setTabState(tabId, {status: 'AWAITING_RESPONSE', currentToolCall: state.currentToolCall, resultInjected: false});
+    // 即使不注入 prompt，也要清除上一次的工具调用状态（新的用户消息）
+    // 修复：每次新的用户消息都应该清空 currentToolCallKey，否则相同的工具调用会被去重跳过
+    await setTabState(tabId, {status: 'AWAITING_RESPONSE', currentToolCallKey: null, resultInjected: false});
     return createResponse(payload.body);
 }
 
@@ -203,8 +204,11 @@ async function handleResponseChunk(tabId, payload) {
     console.log('[MCP Bridge] Tool call detected in stream chunk:', toolCallJson);
 
     // 检查是否已经处理过这个工具调用（避免重复触发）
+    // 使用 JSON 内容而不是原始字符串来判断，避免格式差异导致的误判
     const state = await getTabState(tabId);
-    if (state.currentToolCall === toolCallMatch[0]) {
+    const toolCallKey = JSON.stringify({ tool_name: toolCallJson.tool_name, arguments: toolCallJson.arguments });
+    
+    if (state.currentToolCallKey === toolCallKey) {
         console.log('[MCP Bridge] Tool call already processed, skipping');
         return;
     }
@@ -216,7 +220,7 @@ async function handleResponseChunk(tabId, payload) {
     }
 
     // 记录当前工具调用，避免重复处理
-    await setTabState(tabId, { ...state, currentToolCall: toolCallMatch[0] });
+    await setTabState(tabId, { ...state, currentToolCallKey: toolCallKey });
 
     const {tool_name, arguments: args} = toolCallJson;
     if (tool_name === 'list_tools_in_service') {
@@ -294,18 +298,6 @@ async function handleResponseComplete(tabId, payload) {
         return;
     }
 
-    // 如果已经处理过相同的工具调用，直接返回
-    if (state.currentToolCall === toolCallMatch[0]) {
-        console.log('[MCP Bridge] Tool call already processed in chunk handler, skipping complete');
-        return;
-    }
-    
-    // 如果已经注入过结果，也不再处理
-    if (state.resultInjected) {
-        console.log('[MCP Bridge] Result already injected, skipping complete');
-        return;
-    }
-
     const toolCallJson = parseJsonSafely(toolCallMatch[1]);
     if (!toolCallJson || !toolCallJson.tool_name) {
         // 把错误信息发送给模型
@@ -321,10 +313,25 @@ async function handleResponseComplete(tabId, payload) {
         return;
     }
 
+    // 使用 JSON 内容而不是原始字符串来判断，避免 API 和 UI 解析的格式差异
+    const toolCallKey = JSON.stringify({ tool_name: toolCallJson.tool_name, arguments: toolCallJson.arguments });
+    
+    // 如果已经处理过相同的工具调用，直接返回
+    if (state.currentToolCallKey === toolCallKey) {
+        console.log('[MCP Bridge] Tool call already processed in chunk handler, skipping complete');
+        return;
+    }
+    
+    // 如果已经注入过结果，也不再处理
+    if (state.resultInjected) {
+        console.log('[MCP Bridge] Result already injected, skipping complete');
+        return;
+    }
+
     console.log('[MCP Bridge] Parsed tool call:', toolCallJson);
 
     // 记录当前工具调用
-    await setTabState(tabId, { ...state, currentToolCall: toolCallMatch[0] });
+    await setTabState(tabId, { ...state, currentToolCallKey: toolCallKey });
 
     const {tool_name, arguments: args} = toolCallJson;
     if (tool_name === 'list_tools_in_service') {
