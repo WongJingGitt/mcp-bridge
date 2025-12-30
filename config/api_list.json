@@ -212,5 +212,34 @@
       ],
       "dontShowAgainText": "不再显示此提示"
     } 
+  },
+  {
+    "name": "qianwen",
+    "hostname": "www.qianwen.com",
+    "label": "通义千问",
+    "api": ["/dialog/conversation"],
+    "promptPath": "contents.0.content",
+    "isJsonString": false,
+    "enabled": true,
+    "defaultAlwaysInject": true,
+    "response": {
+      "type": "sse",
+      "format": "data: {json}",
+      "contentPaths": ["content", "text", "delta"]
+    },
+    "uiParsing": {
+      "enabled": true,
+      "priority": "ui",
+      "messageContainer": ".tongyi-markdown",
+      "messageIndex": -1,
+      "contentSelector": "",
+      "senderSelector": "div[class^='questionItem-'] div[class^='bubble-']"
+    },
+    "input": {
+      "selector": "textarea, [contenteditable='true']",
+      "submitKey": "Enter",
+      "submitModifiers": [],
+      "submitDelay": 1600
+    }
   }
 ]
