@@ -16,7 +16,8 @@
     "https://www.tongyi.com/*",
     "https://www.doubao.com/*",
     "https://grok.com/*",
-    "https://aistudio.google.com/*"
+    "https://aistudio.google.com/*",
+    "https://www.qianwen.com/*"
   ],
   "background": {
     "service_worker": "scripts/background.js",
@@ -31,7 +32,8 @@
         "https://www.tongyi.com/*",
         "https://www.doubao.com/*",
         "https://grok.com/*",
-        "https://aistudio.google.com/*"
+        "https://aistudio.google.com/*",
+        "https://www.qianwen.com/*"
       ],
       "js": [
         "scripts/page_world/fetchhook.js",
@@ -49,7 +51,8 @@
         "https://www.tongyi.com/*",
         "https://www.doubao.com/*",
         "https://grok.com/*",
-        "https://aistudio.google.com/*"
+        "https://aistudio.google.com/*",
+        "https://www.qianwen.com/*"
       ],
       "js": ["scripts/content_script.js"],
       "run_at": "document_start"
@@ -71,7 +74,8 @@
         "https://www.tongyi.com/*",
         "https://www.doubao.com/*",
         "https://grok.com/*",
-        "https://aistudio.google.com/*"
+        "https://aistudio.google.com/*",
+        "https://www.qianwen.com/*"
       ]
     }
   ],
