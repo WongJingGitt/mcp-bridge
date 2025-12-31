@@ -85,7 +85,69 @@ ${otherServiceListText}
 </tool_code>
 \`\`\`
 
-### 第四步：整合结果并回答
+### 第四步：处理大结果缓存
+
+某些工具可能返回较大的结果（如文件内容、长列表等）。为了性能考虑，这些结果会被缓存，你会收到缓存引用。
+
+**可用的缓存操作工具**：
+
+#### 1. 搜索缓存内容（推荐优先使用）
+如果用户需要查找特定信息，先搜索定位：
+
+\`\`\`xml
+<tool_code>
+{
+  "tool_name": "search_cached_result",
+  "arguments": {
+    "cache_id": "缓存ID",
+    "keyword": "搜索关键词",
+    "case_sensitive": false,  // 可选，是否区分大小写
+    "max_results": 50         // 可选，最大结果数
+  }
+}
+</tool_code>
+\`\`\`
+
+搜索会返回所有匹配的行号和列号，然后你可以精确获取这些位置的内容。
+
+#### 2. 获取指定行的上下文
+找到目标行后，获取上下文：
+
+\`\`\`xml
+<tool_code>
+{
+  "tool_name": "get_cache_context",
+  "arguments": {
+    "cache_id": "缓存ID",
+    "line_num": 23,          // 目标行号
+    "context_lines": 5       // 可选，上下文行数，默认3
+  }
+}
+</tool_code>
+\`\`\`
+
+#### 3. 分段获取内容
+如果需要顺序浏览，少量多次获取：
+
+\`\`\`xml
+<tool_code>
+{
+  "tool_name": "get_cached_result",
+  "arguments": {
+    "cache_id": "缓存ID",
+    "start": 0,
+    "end": 8000    // 建议每次 5000-10000 字符
+  }
+}
+</tool_code>
+\`\`\`
+
+**推荐流程**：
+1. 收到缓存引用 → 先用 \`search_cached_result\` 搜索关键信息
+2. 找到目标位置 → 用 \`get_cache_context\` 获取上下文
+3. 需要更多内容 → 用 \`get_cached_result\` 分段获取
+
+### 第五步：整合结果并回答
 
 工具执行后，系统会把结果返回给你。**你必须基于这些结果给用户一个完整、友好的回答**，不要只是转发原始数据。
 
@@ -163,5 +225,63 @@ export function formatToolErrorForModel(toolName, errorMessage) {
 **错误信息**: ${errorMessage}
 
 请分析错误原因。你可以尝试修正参数后重新调用该工具，或者选择其他工具，或者直接告诉用户无法完成任务。
+`.trim();
+}
+
+/**
+ * 格式化缓存引用信息，引导模型如何处理大结果
+ *
+ * @param {string} toolName - 被调用的工具名称。
+ * @param {Object} cacheInfo - 缓存信息对象，包含 cache_id, cache_type, total_size 等字段。
+ * @returns {string} - 格式化后的提示文本。
+ */
+export function formatCachedResultForModel(toolName, cacheInfo) {
+    const sizeKB = (cacheInfo.total_size / 1024).toFixed(2);
+    
+    // 根据大小给出推荐的分段大小
+    let recommendedChunkSize;
+    if (cacheInfo.total_size < 20000) {
+        recommendedChunkSize = 5000;
+    } else if (cacheInfo.total_size < 100000) {
+        recommendedChunkSize = 8000;
+    } else {
+        recommendedChunkSize = 10000;
+    }
+    
+    return `
+# 工具执行结果（已缓存）
+
+**工具**: \`${toolName}\`  
+**大小**: ${sizeKB} KB (${cacheInfo.total_size} 字符)  
+**缓存ID**: \`${cacheInfo.cache_id}\`
+
+结果过大已缓存。**推荐操作**：
+
+**1. 如果用户需要查找特定信息** → 先搜索定位：
+\`\`\`xml
+<tool_code>
+{
+  "tool_name": "search_cached_result",
+  "arguments": {
+    "cache_id": "${cacheInfo.cache_id}",
+    "keyword": "搜索关键词"
+  }
+}
+</tool_code>
+\`\`\`
+
+**2. 如果需要顺序浏览** → 分段获取（每次 ${recommendedChunkSize} 字符）：
+\`\`\`xml
+<tool_code>
+{
+  "tool_name": "get_cached_result",
+  "arguments": {
+    "cache_id": "${cacheInfo.cache_id}",
+    "start": 0,
+    "end": ${recommendedChunkSize}
+  }
+}
+</tool_code>
+\`\`\`
 `.trim();
 }
