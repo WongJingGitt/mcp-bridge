@@ -375,20 +375,53 @@ async function handleListTools(tabId, serviceName) {
 
 async function handleExecuteTool(tabId, toolName, args) {
     try {
+        // 特殊处理：缓存相关工具
+        if (toolName === 'get_cached_result') {
+            await handleGetCachedResult(tabId, args);
+            return;
+        }
+        if (toolName === 'search_cached_result') {
+            await handleSearchCachedResult(tabId, args);
+            return;
+        }
+        if (toolName === 'get_cache_context') {
+            await handleGetCacheContext(tabId, args);
+            return;
+        }
+        
         await updateUIPanel(tabId, 'EXECUTING', `执行工具: <strong>${toolName}</strong>...`, {
             title: '参数',
             content: JSON.stringify(args, null, 2)
         });
         const result = await apiClient.executeTool(toolName, args);
-        const resultText = promptBuilder.formatToolResultForModel(toolName, result);
         
-        await updateUIPanel(tabId, 'SUCCESS', `工具执行成功，正在反馈给模型...`, {
-            title: '结果',
-            content: JSON.stringify(result, null, 2)
-        });
-        
-        // 使用智能输入注入代替页面刷新
-        await injectToolResult(tabId, resultText);
+        // 检查是否是缓存引用
+        if (result.result_type === 'cached_reference') {
+            // 使用新的格式化函数处理缓存引用
+            const resultText = promptBuilder.formatCachedResultForModel(toolName, result);
+            
+            await updateUIPanel(tabId, 'SUCCESS', 
+                `工具执行成功，结果已缓存(${(result.total_size/1024).toFixed(2)}KB)`, {
+                title: '缓存信息',
+                content: JSON.stringify({
+                    cache_id: result.cache_id,
+                    cache_type: result.cache_type,
+                    total_size: result.total_size
+                }, null, 2)
+            });
+            
+            await injectToolResult(tabId, resultText);
+        } else {
+            // 原有逻辑：直接结果
+            const resultText = promptBuilder.formatToolResultForModel(toolName, result);
+            
+            await updateUIPanel(tabId, 'SUCCESS', `工具执行成功，正在反馈给模型...`, {
+                title: '结果',
+                content: JSON.stringify(result, null, 2)
+            });
+            
+            await injectToolResult(tabId, resultText);
+        }
         
         // 标记结果已注入，防止重复发送，但保留 currentToolCall
         const state = await getTabState(tabId);
@@ -396,6 +429,205 @@ async function handleExecuteTool(tabId, toolName, args) {
     } catch (error) {
         console.error('[MCP Bridge] Tool execution error:', error);
         await handleToolError(tabId, toolName, error);
+    }
+}
+
+/**
+ * 处理获取缓存结果的工具调用
+ */
+async function handleGetCachedResult(tabId, args) {
+    try {
+        const { cache_id, start, end } = args;
+        
+        if (!cache_id) {
+            throw new Error('缺少必需参数: cache_id');
+        }
+        
+        await updateUIPanel(tabId, 'EXECUTING', 
+            `正在获取缓存内容... ${start !== undefined ? `(${start}-${end || '末尾'})` : '(完整)'}`);
+        
+        const result = await apiClient.getCachedResult(cache_id, start, end);
+        
+        // 格式化返回给模型
+        const hasMore = result.metadata.has_more || false;
+        const actualStart = result.metadata.start || start || 0;
+        const actualEnd = result.metadata.end || end || result.metadata.total_length;
+        const totalLength = result.metadata.total_length || '未知';
+        
+        // 计算本次获取的数量
+        const fetchedCount = actualEnd - actualStart;
+        
+        // 格式化内容：如果是对象则序列化为 JSON
+        let contentStr;
+        if (typeof result.content === 'string') {
+            contentStr = result.content;
+        } else if (typeof result.content === 'object') {
+            contentStr = JSON.stringify(result.content, null, 2);
+        } else {
+            contentStr = String(result.content);
+        }
+        
+        // 计算内容的行数（如果是字符串）
+        const contentLines = typeof result.content === 'string' 
+            ? result.content.split('\n').length 
+            : (Array.isArray(result.content) ? result.content.length : 1);
+        
+        const resultText = `
+# 缓存内容获取结果
+
+**缓存ID**: \`${cache_id}\`  
+**总字符数**: ${totalLength}  
+**本次获取**: ${actualStart} - ${actualEnd} (共 ${fetchedCount} 字符${contentLines > 1 ? `, ${contentLines} 行` : ''})  
+**是否还有更多**: ${hasMore ? `是 (剩余 ${totalLength - actualEnd} 字符)` : '否'}
+
+**内容**:
+\`\`\`
+${contentStr}
+\`\`\`
+
+${hasMore ? `
+---
+继续获取下一段：
+\`\`\`xml
+<tool_code>
+{
+  "tool_name": "get_cached_result",
+  "arguments": {
+    "cache_id": "${cache_id}",
+    "start": ${actualEnd},
+    "end": ${actualEnd + 10000}
+  }
+}
+</tool_code>
+\`\`\`
+` : ''}
+`.trim();
+        
+        await updateUIPanel(tabId, 'SUCCESS', 
+            `缓存内容获取成功 (${actualStart}-${actualEnd}/${totalLength})`);
+        
+        await injectToolResult(tabId, resultText);
+        
+        const state = await getTabState(tabId);
+        await setTabState(tabId, { ...state, resultInjected: true });
+        
+    } catch (error) {
+        console.error('[MCP Bridge] Get cached result error:', error);
+        
+        // 特殊处理缓存过期错误
+        let errorMessage = error.message;
+        if (errorMessage.includes('不存在') || errorMessage.includes('过期') || errorMessage.includes('404')) {
+            errorMessage = `缓存已过期或不存在。缓存的有效期为5分钟，可能已超时。建议重新执行原始工具获取最新数据。`;
+        }
+        
+        await handleToolError(tabId, 'get_cached_result', new Error(errorMessage));
+    }
+}
+
+/**
+ * 处理搜索缓存结果的工具调用
+ */
+async function handleSearchCachedResult(tabId, args) {
+    try {
+        const { cache_id, keyword, case_sensitive = false, max_results = 50 } = args;
+        
+        if (!cache_id || !keyword) {
+            throw new Error('缺少必需参数: cache_id 或 keyword');
+        }
+        
+        await updateUIPanel(tabId, 'EXECUTING', `正在搜索关键词 "${keyword}"...`);
+        
+        const result = await apiClient.searchCachedResult(cache_id, keyword, case_sensitive, max_results);
+        
+        // 格式化搜索结果
+        const matchCount = result.total_matches;
+        const truncated = result.truncated;
+        
+        // 限制显示前20个结果
+        const displayMatches = result.matches.slice(0, 20);
+        const matchList = displayMatches.map(m => 
+            `- 第 ${m.line} 行，第 ${m.column} 列: ${m.content}`
+        ).join('\n');
+        
+        const resultText = `
+# 缓存搜索结果
+
+**关键词**: "${keyword}"  
+**找到**: ${matchCount} 处匹配${truncated ? ' (已截断至前50个)' : ''}  
+**区分大小写**: ${case_sensitive ? '是' : '否'}
+
+**匹配位置**${displayMatches.length < matchCount ? ` (显示前${displayMatches.length}个)` : ''}:
+${matchList}
+
+${matchCount > 0 ? `
+你可以使用 \`get_cache_context\` 获取指定行的上下文：
+\`\`\`xml
+<tool_code>
+{
+  "tool_name": "get_cache_context",
+  "arguments": {
+    "cache_id": "${cache_id}",
+    "line_num": ${displayMatches[0].line},
+    "context_lines": 5
+  }
+}
+</tool_code>
+\`\`\`
+
+或使用 \`get_cached_result\` 精确获取这些行附近的内容。
+` : '未找到匹配内容。'}
+`.trim();
+        
+        await updateUIPanel(tabId, 'SUCCESS', `搜索完成，找到 ${matchCount} 处匹配`);
+        
+        await injectToolResult(tabId, resultText);
+        
+        const state = await getTabState(tabId);
+        await setTabState(tabId, { ...state, resultInjected: true });
+        
+    } catch (error) {
+        console.error('[MCP Bridge] Search cached result error:', error);
+        await handleToolError(tabId, 'search_cached_result', error);
+    }
+}
+
+/**
+ * 处理获取缓存上下文的工具调用
+ */
+async function handleGetCacheContext(tabId, args) {
+    try {
+        const { cache_id, line_num, context_lines = 3 } = args;
+        
+        if (!cache_id || !line_num) {
+            throw new Error('缺少必需参数: cache_id 或 line_num');
+        }
+        
+        await updateUIPanel(tabId, 'EXECUTING', `正在获取第 ${line_num} 行的上下文...`);
+        
+        const result = await apiClient.getCacheContext(cache_id, line_num, context_lines);
+        
+        const resultText = `
+# 缓存上下文
+
+**目标行**: 第 ${result.target_line} 行  
+**上下文范围**: 第 ${result.context_start} - ${result.context_end} 行 (共 ${result.total_lines} 行)
+
+**内容**:
+\`\`\`
+${result.content}
+\`\`\`
+`.trim();
+        
+        await updateUIPanel(tabId, 'SUCCESS', `上下文获取成功`);
+        
+        await injectToolResult(tabId, resultText);
+        
+        const state = await getTabState(tabId);
+        await setTabState(tabId, { ...state, resultInjected: true });
+        
+    } catch (error) {
+        console.error('[MCP Bridge] Get cache context error:', error);
+        await handleToolError(tabId, 'get_cache_context', error);
     }
 }
 
