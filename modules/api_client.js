@@ -151,6 +151,18 @@ export async function executeTool(toolName, args) {
     }, 120000); // 工具执行可能耗时较长，设置更长的超时时间 (2分钟)
 
     if (data && data.success) {
+        // 检查是否是缓存引用
+        if (data.result_type === 'cached_reference') {
+            // 返回完整的缓存信息
+            return {
+                result_type: data.result_type,
+                cache_id: data.cache_id,
+                cache_type: data.cache_type,
+                total_size: data.total_size,
+                message: data.message
+            };
+        }
+        // 普通结果，返回 result 字段
         return data.result;
     }
     throw new Error(data.error || `执行工具 "${toolName}" 失败。`);
@@ -195,4 +207,92 @@ export async function updateConfig(newConfig) {
         },
         body: JSON.stringify({ config: newConfig })
     });
+}
+
+/**
+ * 获取缓存的结果（完整或分段）
+ * @param {string} cacheId - 缓存ID
+ * @param {number} [start] - 可选，起始位置（字符索引）
+ * @param {number} [end] - 可选，结束位置（字符索引）
+ * @returns {Promise<Object>} - 包含 content 和 metadata 的对象
+ */
+export async function getCachedResult(cacheId, start = null, end = null) {
+    const baseUrl = await getBaseUrl();
+    const url = new URL(`${baseUrl}/result/${cacheId}`);
+    
+    if (start !== null && start !== undefined) {
+        url.searchParams.append('start', start);
+    }
+    if (end !== null && end !== undefined) {
+        url.searchParams.append('end', end);
+    }
+    
+    const data = await fetchWithTimeout(url.toString(), {}, 30000); // 30秒超时
+    
+    if (data && data.success) {
+        return {
+            content: data.result,
+            metadata: data.metadata || {}
+        };
+    }
+    
+    throw new Error(data.error || '获取缓存结果失败');
+}
+
+/**
+ * 在缓存内容中搜索关键词
+ * @param {string} cacheId - 缓存ID
+ * @param {string} keyword - 搜索关键词
+ * @param {boolean} [caseSensitive] - 是否区分大小写，默认false
+ * @param {number} [maxResults] - 最大返回结果数，默认50
+ * @returns {Promise<Object>} - 搜索结果，包含匹配的行号、列号和内容片段
+ */
+export async function searchCachedResult(cacheId, keyword, caseSensitive = false, maxResults = 50) {
+    const baseUrl = await getBaseUrl();
+    const data = await fetchWithTimeout(`${baseUrl}/search-cache`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            cache_id: cacheId,
+            keyword: keyword,
+            case_sensitive: caseSensitive,
+            max_results: maxResults
+        })
+    }, 30000); // 30秒超时
+    
+    if (data && data.success) {
+        return data.result;
+    }
+    
+    throw new Error(data.error || '搜索缓存失败');
+}
+
+/**
+ * 获取缓存中指定行的上下文
+ * @param {string} cacheId - 缓存ID
+ * @param {number} lineNum - 目标行号（从1开始）
+ * @param {number} [contextLines] - 上下文行数，默认3
+ * @returns {Promise<Object>} - 包含目标行及上下文的内容
+ */
+export async function getCacheContext(cacheId, lineNum, contextLines = 3) {
+    const baseUrl = await getBaseUrl();
+    const data = await fetchWithTimeout(`${baseUrl}/get-cache-context`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            cache_id: cacheId,
+            line_num: lineNum,
+            context_lines: contextLines
+        })
+    }, 30000); // 30秒超时
+    
+    if (data && data.success) {
+        return data.result;
+    }
+    
+    throw new Error(data.error || '获取上下文失败');
 }
