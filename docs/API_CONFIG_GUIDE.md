@@ -279,9 +279,14 @@
   ```
 
 #### `uiParsing.messageContainer`
-- **类型**: `string`
+- **类型**: `string` 或 `string[]`
 - **必填**: ✅
 - **说明**: 消息容器的 CSS 选择器
+- **支持多选择器**: 可以配置数组，适配不同形态的消息
+- **多选择器逻辑**: 
+  - 收集所有匹配的元素（来自所有选择器）
+  - 去重后按 DOM 顺序排序
+  - 根据 `messageIndex` 获取指定位置的消息
 - **要求**: 选择器应该匹配所有消息元素
 - **获取方法**:
   1. 打开 DevTools
@@ -289,7 +294,15 @@
   3. 查看元素的 class 或其他属性
 - **示例**:
   ```json
+  // 单个选择器
   "messageContainer": ".ds-message"
+  
+  // 多个选择器（适配不同消息形态）
+  "messageContainer": [
+    ".tongyi-markdown",
+    ".message-content",
+    "[data-message-type='text']"
+  ]
   ```
 
 #### `uiParsing.messageIndex`
@@ -306,12 +319,22 @@
   ```
 
 #### `uiParsing.contentSelector` (可选)
-- **类型**: `string`
+- **类型**: `string` 或 `string[]`
 - **说明**: 消息内容的选择器（在 messageContainer 内查找）
+- **支持多选择器**: 可以配置数组，按顺序尝试，使用第一个匹配的
 - **何时使用**: 如果消息容器包含很多其他元素（如头像、时间戳），使用此选择器精确定位内容区域
+- **空字符串**: 表示使用容器本身，不进行二次查找
 - **示例**:
   ```json
+  // 单个选择器
   "contentSelector": ".markdown-content"
+  
+  // 多个选择器（按优先级尝试）
+  "contentSelector": [
+    ".markdown-body",
+    ".message-text",
+    ""  // 回退：使用容器本身
+  ]
   ```
 
 ---
@@ -596,6 +619,92 @@
   "skipRequestModification": true
   ```
 
+#### `promptFilter`
+- **类型**: `object`
+- **可选**: ✅
+- **说明**: 自定义 Prompt 获取逻辑，用于处理复杂的请求体结构
+- **使用场景**: 
+  - 消息格式动态变化（如根据 `mime_type` 筛选）
+  - 需要从数组中查找特定类型的消息
+  - 标准路径无法满足需求
+- **必须配对**: 使用 `promptFilter` 时必须同时配置 `promptSetFilter`
+- **配置格式**:
+  ```json
+  {
+    "preset": "预设名称",
+    "params": {
+      "参数名": "参数值"
+    }
+  }
+  ```
+- **可用预设**:
+  - `findByField`: 根据字段值查找数组元素
+  - `findFirstMatch`: 按优先级查找第一个匹配的元素
+  - `filterAndJoin`: 过滤数组并合并结果
+  - `getByIndex`: 获取指定索引的元素
+  - `getPath`: 直接获取路径值
+- **示例**:
+  ```json
+  // 根据 mime_type 查找 text/plain 类型的消息
+  "promptFilter": {
+    "preset": "findByField",
+    "params": {
+      "arrayPath": "messages",
+      "matchField": "mime_type",
+      "matchValue": "text/plain",
+      "returnField": "content"
+    }
+  }
+  
+  // 按优先级查找多种类型
+  "promptFilter": {
+    "preset": "findFirstMatch",
+    "params": {
+      "arrayPath": "messages",
+      "matchField": "mime_type",
+      "matchValues": ["text/plain", "text/markdown"],
+      "returnField": ["content", "text"]
+    }
+  }
+  ```
+
+#### `promptSetFilter`
+- **类型**: `object`
+- **可选**: ✅
+- **说明**: 自定义 Prompt 设置逻辑，与 `promptFilter` 配对使用
+- **使用场景**: 需要将修改后的 Prompt 写回到特定位置
+- **必须配对**: 使用 `promptSetFilter` 时必须同时配置 `promptFilter`
+- **配置格式**: 与 `promptFilter` 相同
+- **可用预设**:
+  - `setByField`: 根据字段值查找并设置
+  - `setByIndex`: 设置指定索引的元素
+  - `setPath`: 直接设置路径值
+- **支持多字段**: `setField` 参数可以是数组，同时设置多个字段
+- **示例**:
+  ```json
+  // 设置单个字段
+  "promptSetFilter": {
+    "preset": "setByField",
+    "params": {
+      "arrayPath": "messages",
+      "matchField": "mime_type",
+      "matchValue": "text/plain",
+      "setField": "content"
+    }
+  }
+  
+  // 同时设置多个字段
+  "promptSetFilter": {
+    "preset": "setByField",
+    "params": {
+      "arrayPath": "messages",
+      "matchField": "mime_type",
+      "matchValue": "text/plain",
+      "setField": ["content", "meta_data.ori_query"]
+    }
+  }
+  ```
+
 ---
 
 ## 高级配置
@@ -722,6 +831,163 @@ if (isJsonString) {
 }
 ```
 
+### 自定义 Prompt 筛选（promptFilter）
+
+当请求体结构复杂，标准的 `promptPath` 无法满足需求时，使用 `promptFilter` 和 `promptSetFilter`。
+
+#### 场景 1: 根据 mime_type 动态筛选消息
+
+**请求体结构**:
+```json
+{
+  "messages": [
+    {
+      "mime_type": "image/url",
+      "content": "系统提示..."
+    },
+    {
+      "mime_type": "text/plain",
+      "content": "用户消息",
+      "meta_data": {
+        "ori_query": "用户消息"
+      }
+    }
+  ]
+}
+```
+
+**配置**:
+```json
+{
+  "promptPath": "messages",  // 仍需配置，但会被 promptFilter 覆盖
+  "promptFilter": {
+    "preset": "findByField",
+    "params": {
+      "arrayPath": "messages",
+      "matchField": "mime_type",
+      "matchValue": "text/plain",
+      "returnField": "content"
+    }
+  },
+  "promptSetFilter": {
+    "preset": "setByField",
+    "params": {
+      "arrayPath": "messages",
+      "matchField": "mime_type",
+      "matchValue": "text/plain",
+      "setField": ["content", "meta_data.ori_query"]
+    }
+  }
+}
+```
+
+**工作流程**:
+1. `promptFilter` 从 `messages` 数组中找到 `mime_type === "text/plain"` 的消息
+2. 提取其 `content` 字段的值
+3. 拼接 System Prompt
+4. `promptSetFilter` 将拼接后的内容写回 `content` 和 `meta_data.ori_query` 两个字段
+
+#### 场景 2: 按优先级查找多种消息类型
+
+**配置**:
+```json
+{
+  "promptFilter": {
+    "preset": "findFirstMatch",
+    "params": {
+      "arrayPath": "messages",
+      "matchField": "type",
+      "matchValues": ["text", "markdown", "plain"],
+      "returnField": ["content", "text", "message"]
+    }
+  }
+}
+```
+
+**逻辑**:
+- 优先查找 `type === "text"` 的消息
+- 如果没有，查找 `type === "markdown"`
+- 如果还没有，查找 `type === "plain"`
+- 找到后，依次尝试提取 `content`、`text`、`message` 字段
+
+#### 场景 3: 支持数组参数
+
+所有预设的关键参数都支持数组形式：
+
+```json
+{
+  "promptFilter": {
+    "preset": "findByField",
+    "params": {
+      "arrayPath": ["messages", "items", "history"],  // 尝试多个数组路径
+      "matchField": "type",
+      "matchValue": "text",
+      "returnField": ["content", "text"]  // 尝试多个字段
+    }
+  }
+}
+```
+
+#### promptFilter 预设参考
+
+| 预设名称 | 用途 | 支持数组的参数 |
+|---------|------|---------------|
+| `findByField` | 根据字段值查找 | `arrayPath`, `returnField` |
+| `findFirstMatch` | 按优先级查找 | `arrayPath`, `matchValues`, `returnField` |
+| `filterAndJoin` | 过滤并合并 | `arrayPath`, `matchValue`, `returnField` |
+| `getByIndex` | 获取指定索引 | `arrayPath`, `returnField` |
+| `getPath` | 直接获取路径 | `path` |
+
+#### promptSetFilter 预设参考
+
+| 预设名称 | 用途 | 支持数组的参数 |
+|---------|------|---------------|
+| `setByField` | 根据字段值设置 | `arrayPath`, `setField` |
+| `setByIndex` | 设置指定索引 | `arrayPath`, `setField` |
+| `setPath` | 直接设置路径 | `path` |
+
+### UI 解析多选择器
+
+当平台的消息有多种形态时，配置多个选择器以适配所有情况。
+
+#### 场景: 千问的多种消息形态
+
+**问题**: 千问的消息容器可能是 `.tongyi-markdown`、`.message-content` 或其他类名
+
+**配置**:
+```json
+{
+  "uiParsing": {
+    "enabled": true,
+    "priority": "ui",
+    "messageContainer": [
+      ".tongyi-markdown",
+      ".message-content",
+      "[data-message-type='text']",
+      ".chat-message"
+    ],
+    "messageIndex": -1,
+    "contentSelector": [
+      ".markdown-body",
+      ".message-text",
+      ""
+    ]
+  }
+}
+```
+
+**工作原理**:
+1. 使用所有选择器收集页面上的消息元素
+2. 去重（同一元素可能被多个选择器匹配）
+3. 按 DOM 顺序排序（确保获取真正的最后一条）
+4. 根据 `messageIndex: -1` 获取最后一条
+5. 在该元素内，按顺序尝试 `contentSelector`
+
+**优势**:
+- ✅ 适配多种消息形态
+- ✅ 自动按 DOM 顺序排序
+- ✅ 确保获取真正的最后一条消息
+
 ---
 
 ## 配置示例
@@ -843,6 +1109,73 @@ if (isJsonString) {
 }
 ```
 
+### 夸克 AI（使用 promptFilter）
+
+```json
+{
+  "name": "qianwen",
+  "hostname": "www.qianwen.com",
+  "label": "通义千问",
+  "api": ["/dialog/conversation", "api/v2/chat"],
+  "promptPath": "messages",
+  "isJsonString": false,
+  "enabled": true,
+  "defaultAlwaysInject": true,
+  "response": {
+    "type": "sse",
+    "format": "data: {json}",
+    "contentPaths": ["content", "text", "delta"]
+  },
+  "uiParsing": {
+    "enabled": true,
+    "priority": "ui",
+    "messageContainer": [
+      ".tongyi-markdown",
+      ".message-content",
+      "[data-message-type]"
+    ],
+    "messageIndex": -1,
+    "contentSelector": ["", ".markdown-body"]
+  },
+  "input": {
+    "selector": "textarea, [contenteditable='true']",
+    "submitKey": "Enter",
+    "submitModifiers": [],
+    "submitDelay": 1600
+  },
+  "newConversationFlag": {
+    "from": "requestBody",
+    "path": "scene_param",
+    "checkValue": "first_turn",
+    "valueType": "string",
+    "checkExists": true
+  },
+  "promptFilter": {
+    "preset": "findByField",
+    "params": {
+      "arrayPath": "messages",
+      "matchField": "mime_type",
+      "matchValue": "text/plain",
+      "returnField": ["content", "meta_data.ori_query"]
+    }
+  },
+  "promptSetFilter": {
+    "preset": "setByField",
+    "params": {
+      "arrayPath": "messages",
+      "matchField": "mime_type",
+      "matchValue": "text/plain",
+      "setField": ["content", "meta_data.ori_query"]
+    }
+  }
+}
+```
+
+**说明**:
+- 使用 `promptFilter` 根据 `mime_type` 动态筛选文本消息
+- 支持多种 UI 消息容器选择器
+- 同时设置 `content` 和 `meta_data.ori_query` 两个字段
+
 ---
 
 ## 常见场景
@@ -921,6 +1254,58 @@ if (isJsonString) {
   }
 }
 ```
+
+### 场景 6: 消息格式动态变化
+
+**问题**: 请求体中的消息数组包含多种类型（文本、图片、文件等），需要动态筛选
+
+**解决**: 使用 `promptFilter` 和 `promptSetFilter`
+
+**配置**:
+```json
+{
+  "promptFilter": {
+    "preset": "findByField",
+    "params": {
+      "arrayPath": "messages",
+      "matchField": "mime_type",
+      "matchValue": "text/plain",
+      "returnField": "content"
+    }
+  },
+  "promptSetFilter": {
+    "preset": "setByField",
+    "params": {
+      "arrayPath": "messages",
+      "matchField": "mime_type",
+      "matchValue": "text/plain",
+      "setField": "content"
+    }
+  }
+}
+```
+
+### 场景 7: UI 消息容器有多种形态
+
+**问题**: 平台的消息容器 class 名称不固定，或有多种消息类型
+
+**解决**: 配置多个 `messageContainer` 选择器
+
+**配置**:
+```json
+{
+  "uiParsing": {
+    "messageContainer": [
+      ".message-type-a",
+      ".message-type-b",
+      "[data-message]"
+    ],
+    "messageIndex": -1
+  }
+}
+```
+
+**效果**: 自动收集所有类型的消息，按 DOM 顺序排序后取最后一条
 
 ---
 
