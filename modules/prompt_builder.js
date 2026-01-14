@@ -52,7 +52,7 @@ ${otherServiceListText}
 
 **无论是核心服务还是其他服务**，在决定使用某个服务后，都需要先调用 \`list_tools_in_service\` 查看该服务的详细信息：
 
-
+\`\`\`xml
 <tool_code>
 {
   "tool_name": "list_tools_in_service",
@@ -61,7 +61,7 @@ ${otherServiceListText}
   }
 }
 </tool_code>
-
+\`\`\`
 
 系统会返回该服务的**完整信息**，包括：
 - **服务描述**（对于其他服务特别重要，因为初始 Prompt 中未展示）
@@ -73,7 +73,7 @@ ${otherServiceListText}
 
 根据工具列表选择合适的工具调用：
 
-
+\`\`\`xml
 <tool_code>
 {
   "tool_name": "实际工具名",
@@ -83,7 +83,7 @@ ${otherServiceListText}
   "server_name": "服务名称"  // 可选字段，如果需要指定服务的话，用于区分同名工具
 }
 </tool_code>
-
+\`\`\`
 
 ### 第四步：处理大结果缓存
 
@@ -94,7 +94,7 @@ ${otherServiceListText}
 #### 1. 搜索缓存内容（推荐优先使用）
 如果用户需要查找特定信息，先搜索定位：
 
-
+\`\`\`xml
 <tool_code>
 {
   "tool_name": "search_cached_result",
@@ -106,14 +106,14 @@ ${otherServiceListText}
   }
 }
 </tool_code>
-
+\`\`\`
 
 搜索会返回所有匹配的行号和列号，然后你可以精确获取这些位置的内容。
 
 #### 2. 获取指定行的上下文
 找到目标行后，获取上下文：
 
-
+\`\`\`xml
 <tool_code>
 {
   "tool_name": "get_cache_context",
@@ -124,12 +124,12 @@ ${otherServiceListText}
   }
 }
 </tool_code>
-
+\`\`\`
 
 #### 3. 分段获取内容
 如果需要顺序浏览，少量多次获取：
 
-
+\`\`\`xml
 <tool_code>
 {
   "tool_name": "get_cached_result",
@@ -140,7 +140,7 @@ ${otherServiceListText}
   }
 }
 </tool_code>
-
+\`\`\`
 
 **推荐流程**：
 1. 收到缓存引用 → 先用 \`search_cached_result\` 搜索关键信息
@@ -153,7 +153,7 @@ ${otherServiceListText}
 
 ## 调用规则
 
-1. **格式严格**: XML 标签必须是 \`<tool_code>\`，内部必须是合法的 JSON，并且 **绝对不允许用代码块包裹**
+1. **格式严格**: XML 标签必须是 \`<tool_code>\`，内部必须是合法的 JSON
 2. **单次调用**：一次只调用一个工具，等待结果后再决定下一步
 3. **可以思考**：你可以在输出中说明你的思路，比如"我需要先查询文件内容"，然后再输出 \`<tool_code>\`
 4. **正常对话**：不调用工具时，就像普通助手一样自然交流
