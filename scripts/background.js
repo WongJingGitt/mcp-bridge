@@ -162,11 +162,15 @@ async function handleRequestBody(tabId, payload) {
 
         // 支持单个路径或多个路径
         const promptPaths = Array.isArray(siteConfig.promptPath) ? siteConfig.promptPath : [siteConfig.promptPath];
-
         
         // 对每个路径都进行注入
         for (const path of promptPaths) {
-            const originalPrompt = getByPath(bodyJson, path, siteConfig.isJsonString) || '';
+            // 如果配置了 promptFilter，必须同时配置 promptSetFilter
+            if (siteConfig.promptFilter && !siteConfig.promptSetFilter) {
+                console.warn('[MCP Bridge] promptFilter is configured but promptSetFilter is missing. Both are required for custom logic.');
+            }
+            
+            const originalPrompt = getByPath(bodyJson, path, siteConfig.isJsonString, siteConfig.promptFilter) || '';
             const finalPrompt = (isNewConversation ? initialPrompt + '\n\n---\n\n' : reminderPrompt + '\n\n---\n\n') + originalPrompt;
             setByPath(bodyJson, path, finalPrompt, siteConfig);
         }
@@ -796,8 +800,8 @@ function checkIsNewConversation(body, siteConfig) {
         // 获取要检查的字段值
         let value;
         if (flag.from === 'requestBody') {
-            // 从请求体中获取值
-            value = getByPath(body, flag.path, siteConfig.isJsonString);
+            // 从请求体中获取值（这里不应用 promptFilter，因为只是检查标志）
+            value = getByPath(body, flag.path, siteConfig.isJsonString, null);
         }
         // 未来可以扩展其他来源，如 headers, url 等
         
@@ -870,7 +874,275 @@ function checkValueMatch(actualValue, expectedValue, valueType) {
     }
 }
 
-function getByPath(obj, path, isJsonString) {
+/**
+ * 预定义的筛选器函数集合
+ */
+const FILTER_PRESETS = {
+    // 根据字段值查找数组元素并返回指定字段
+    // 参数: { arrayPath, matchField, matchValue, returnField }
+    // 支持数组: arrayPath, returnField 可以是数组
+    findByField: (obj, params) => {
+        const arrayPaths = Array.isArray(params.arrayPath) ? params.arrayPath : [params.arrayPath];
+        const returnFields = Array.isArray(params.returnField) ? params.returnField : [params.returnField];
+        
+        // 尝试每个 arrayPath
+        for (const arrayPath of arrayPaths) {
+            const array = getValueByPath(obj, arrayPath);
+            if (!Array.isArray(array)) continue;
+            
+            const item = array.find(el => el[params.matchField] === params.matchValue);
+            if (!item) continue;
+            
+            // 尝试每个 returnField
+            for (const returnField of returnFields) {
+                const value = getValueByPath(item, returnField);
+                if (value) return value;
+            }
+        }
+        return '';
+    },
+    
+    // 根据字段值过滤数组并合并指定字段
+    // 参数: { arrayPath, matchField, matchValue, returnField, separator }
+    // 支持数组: arrayPath, matchValue, returnField 可以是数组
+    filterAndJoin: (obj, params) => {
+        const arrayPaths = Array.isArray(params.arrayPath) ? params.arrayPath : [params.arrayPath];
+        const matchValues = Array.isArray(params.matchValue) ? params.matchValue : [params.matchValue];
+        const returnFields = Array.isArray(params.returnField) ? params.returnField : [params.returnField];
+        const separator = params.separator || '\n\n';
+        
+        const results = [];
+        
+        for (const arrayPath of arrayPaths) {
+            const array = getValueByPath(obj, arrayPath);
+            if (!Array.isArray(array)) continue;
+            
+            const filtered = array.filter(el => matchValues.includes(el[params.matchField]));
+            
+            for (const item of filtered) {
+                for (const returnField of returnFields) {
+                    const value = getValueByPath(item, returnField);
+                    if (value) {
+                        results.push(value);
+                        break; // 找到第一个有效字段就跳出
+                    }
+                }
+            }
+        }
+        
+        return results.join(separator);
+    },
+    
+    // 获取数组中第一个匹配条件的元素的字段值
+    // 参数: { arrayPath, matchField, matchValues, returnField }
+    // 支持数组: arrayPath, matchValues, returnField 可以是数组
+    findFirstMatch: (obj, params) => {
+        const arrayPaths = Array.isArray(params.arrayPath) ? params.arrayPath : [params.arrayPath];
+        const matchValues = Array.isArray(params.matchValues) ? params.matchValues : [params.matchValues];
+        const returnFields = Array.isArray(params.returnField) ? params.returnField : [params.returnField];
+        
+        for (const arrayPath of arrayPaths) {
+            const array = getValueByPath(obj, arrayPath);
+            if (!Array.isArray(array)) continue;
+            
+            for (const value of matchValues) {
+                const item = array.find(el => el[params.matchField] === value);
+                if (!item) continue;
+                
+                for (const returnField of returnFields) {
+                    const fieldValue = getValueByPath(item, returnField);
+                    if (fieldValue) return fieldValue;
+                }
+            }
+        }
+        return '';
+    },
+    
+    // 获取数组指定索引的元素的字段值
+    // 参数: { arrayPath, index, returnField }
+    // 支持数组: arrayPath, returnField 可以是数组
+    getByIndex: (obj, params) => {
+        const arrayPaths = Array.isArray(params.arrayPath) ? params.arrayPath : [params.arrayPath];
+        const returnFields = Array.isArray(params.returnField) ? params.returnField : [params.returnField];
+        
+        for (const arrayPath of arrayPaths) {
+            const array = getValueByPath(obj, arrayPath);
+            if (!Array.isArray(array)) continue;
+            
+            const item = array[params.index];
+            if (!item) continue;
+            
+            for (const returnField of returnFields) {
+                const value = getValueByPath(item, returnField);
+                if (value) return value;
+            }
+        }
+        return '';
+    },
+    
+    // 直接获取指定路径的值
+    // 参数: { path }
+    // 支持数组: path 可以是数组，返回第一个非空值
+    getPath: (obj, params) => {
+        const paths = Array.isArray(params.path) ? params.path : [params.path];
+        
+        for (const path of paths) {
+            const value = getValueByPath(obj, path);
+            if (value) return value;
+        }
+        return '';
+    }
+};
+
+/**
+ * 预定义的设置器函数集合
+ */
+const SETTER_PRESETS = {
+    // 根据字段值查找数组元素并设置指定字段
+    // 参数: { arrayPath, matchField, matchValue, setField }
+    // 支持数组: arrayPath, setField 可以是数组
+    setByField: (obj, value, params) => {
+        const arrayPaths = Array.isArray(params.arrayPath) ? params.arrayPath : [params.arrayPath];
+        const setFields = Array.isArray(params.setField) ? params.setField : [params.setField];
+        
+        for (const arrayPath of arrayPaths) {
+            const array = getValueByPath(obj, arrayPath);
+            if (!Array.isArray(array)) continue;
+            
+            const item = array.find(el => el[params.matchField] === params.matchValue);
+            if (!item) continue;
+            
+            // 设置所有指定的字段
+            for (const setField of setFields) {
+                setValueByPath(item, setField, value);
+            }
+            
+            // 找到第一个匹配的就返回
+            return;
+        }
+    },
+    
+    // 设置数组指定索引的元素的字段值
+    // 参数: { arrayPath, index, setField }
+    // 支持数组: arrayPath, setField 可以是数组
+    setByIndex: (obj, value, params) => {
+        const arrayPaths = Array.isArray(params.arrayPath) ? params.arrayPath : [params.arrayPath];
+        const setFields = Array.isArray(params.setField) ? params.setField : [params.setField];
+        
+        for (const arrayPath of arrayPaths) {
+            const array = getValueByPath(obj, arrayPath);
+            if (!Array.isArray(array)) continue;
+            
+            const item = array[params.index];
+            if (!item) continue;
+            
+            // 设置所有指定的字段
+            for (const setField of setFields) {
+                setValueByPath(item, setField, value);
+            }
+            
+            return;
+        }
+    },
+    
+    // 直接设置指定路径的值
+    // 参数: { path }
+    // 支持数组: path 可以是数组，会设置所有路径
+    setPath: (obj, value, params) => {
+        const paths = Array.isArray(params.path) ? params.path : [params.path];
+        
+        for (const path of paths) {
+            setValueByPath(obj, path, value);
+        }
+    }
+};
+
+/**
+ * 辅助函数：根据路径获取值
+ */
+function getValueByPath(obj, path) {
+    if (!path) return obj;
+    const parts = path.split('.');
+    return parts.reduce((acc, part) => acc && acc[part], obj);
+}
+
+/**
+ * 辅助函数：根据路径设置值
+ */
+function setValueByPath(obj, path, value) {
+    if (!path) return;
+    const parts = path.split('.');
+    const lastPart = parts.pop();
+    let target = obj;
+    for (const part of parts) {
+        if (target === undefined || target === null) return;
+        target = target[part];
+    }
+    if (target && typeof target === 'object' && lastPart) {
+        target[lastPart] = value;
+    }
+}
+
+/**
+ * 应用自定义的 prompt 筛选逻辑
+ * @param {any} value - 当前值（如果有 promptFilter，这里是完整的 obj）
+ * @param {object|string} filterConfig - 筛选配置对象或预设名称
+ * @param {object} rootObj - 根对象（完整的请求体）
+ * @param {any} currentTarget - 当前目标对象
+ * @returns {any} - 筛选后的值
+ */
+function applyPromptFilter(value, filterConfig, rootObj, currentTarget) {
+    if (!filterConfig) {
+        return value;
+    }
+    
+    try {
+        // 如果是字符串，尝试解析为 JSON
+        if (typeof filterConfig === 'string') {
+            try {
+                filterConfig = JSON.parse(filterConfig);
+            } catch (e) {
+                console.error('[MCP Bridge] Failed to parse promptFilter as JSON:', e);
+                return value;
+            }
+        }
+        
+        // 如果是对象配置
+        if (typeof filterConfig === 'object' && filterConfig.preset) {
+            const preset = FILTER_PRESETS[filterConfig.preset];
+            if (!preset) {
+                console.error('[MCP Bridge] Unknown filter preset:', filterConfig.preset);
+                return value;
+            }
+            
+            const result = preset(value, filterConfig.params || {});
+            
+            console.log('[MCP Bridge] Applied promptFilter preset:', {
+                preset: filterConfig.preset,
+                params: filterConfig.params,
+                outputType: typeof result,
+                outputPreview: typeof result === 'string' ? result.substring(0, 100) : result
+            });
+            
+            return result;
+        }
+        
+        console.warn('[MCP Bridge] Invalid promptFilter config:', filterConfig);
+        return value;
+    } catch (error) {
+        console.error('[MCP Bridge] Failed to apply promptFilter:', error);
+        console.error('[MCP Bridge] Filter config:', filterConfig);
+        return value;
+    }
+}
+
+function getByPath(obj, path, isJsonString, promptFilter) {
+    // 如果配置了 promptFilter，完全使用自定义逻辑，忽略 path
+    if (promptFilter) {
+        console.log('[MCP Bridge] Using promptFilter, ignoring path');
+        return applyPromptFilter(obj, promptFilter, obj, obj);
+    }
+    
     const parts = path.split('.');
     
     if (isJsonString && parts.length >= 2) {
@@ -904,8 +1176,42 @@ function getByPath(obj, path, isJsonString) {
 }
 
 function setByPath(obj, path, value, siteConfig) {
-    const {isJsonString} = siteConfig;
+    const {isJsonString, promptFilter, promptSetFilter} = siteConfig;
     const parts = path.split('.');
+    
+    // 如果配置了 promptSetFilter，使用自定义逻辑设置值
+    if (promptSetFilter) {
+        console.log('[MCP Bridge] Using promptSetFilter for setting value');
+        try {
+            // 如果是字符串，尝试解析为 JSON
+            let setConfig = promptSetFilter;
+            if (typeof setConfig === 'string') {
+                try {
+                    setConfig = JSON.parse(setConfig);
+                } catch (e) {
+                    console.error('[MCP Bridge] Failed to parse promptSetFilter as JSON:', e);
+                    // 继续使用默认逻辑
+                    setConfig = null;
+                }
+            }
+            
+            // 如果是对象配置
+            if (setConfig && typeof setConfig === 'object' && setConfig.preset) {
+                const preset = SETTER_PRESETS[setConfig.preset];
+                if (preset) {
+                    preset(obj, value, setConfig.params || {});
+                    console.log('[MCP Bridge] Applied promptSetFilter preset:', setConfig.preset);
+                    return;
+                } else {
+                    console.error('[MCP Bridge] Unknown setter preset:', setConfig.preset);
+                }
+            }
+        } catch (error) {
+            console.error('[MCP Bridge] Failed to apply promptSetFilter:', error);
+            console.error('[MCP Bridge] Filter config:', promptSetFilter);
+            // 失败则继续使用默认逻辑
+        }
+    }
     
     if (isJsonString && parts.length >= 2) {
         // 对于 JSON 字符串,需要特殊处理
