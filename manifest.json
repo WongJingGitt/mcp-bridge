@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MCP Bridge",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "通过本地桥接服务，为网页大模型提供强大的MCP工具调用能力。",
   "permissions": [
     "storage",
