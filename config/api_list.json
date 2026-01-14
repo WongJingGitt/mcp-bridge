@@ -217,8 +217,8 @@
     "name": "qianwen",
     "hostname": "www.qianwen.com",
     "label": "通义千问",
-    "api": ["/dialog/conversation"],
-    "promptPath": "contents.0.content",
+    "api": ["/dialog/conversation", "api/v2/chat"],
+    "promptPath": ["messages.0.content", "messages.0.meta_data.ori_query"],
     "isJsonString": false,
     "enabled": true,
     "defaultAlwaysInject": true,
@@ -230,7 +230,7 @@
     "uiParsing": {
       "enabled": true,
       "priority": "ui",
-      "messageContainer": ".tongyi-markdown",
+      "messageContainer": [".tongyi-markdown", "#qk-markdown-react"],
       "messageIndex": -1,
       "contentSelector": "",
       "senderSelector": "div[class^='questionItem-'] div[class^='bubble-']"
@@ -240,6 +240,31 @@
       "submitKey": "Enter",
       "submitModifiers": [],
       "submitDelay": 1600
-    }
+    },
+      "newConversationFlag": {
+          "from": "requestBody",
+          "path": "scene_param",
+          "checkValue": "first_turn",
+          "valueType": "string",
+          "checkExists": true
+      },
+      "promptFilter": {
+          "preset": "findByField",
+          "params": {
+              "arrayPath": "messages",
+              "matchField": "mime_type",
+              "matchValue": "text/plain",
+              "returnField": "content"
+          }
+      },
+      "promptSetFilter": {
+          "preset": "setByField",
+          "params": {
+              "arrayPath": "messages",
+              "matchField": "mime_type",
+              "matchValue": "text/plain",
+              "setField": ["content", "meta_data.ori_query"]
+          }
+      }
   }
 ]
