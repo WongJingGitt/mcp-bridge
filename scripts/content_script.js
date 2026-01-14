@@ -211,30 +211,66 @@ function parseUIContent(uiConfig) {
     }
 
     try {
-        const containers = document.querySelectorAll(uiConfig.messageContainer);        
-        if (!containers || containers.length === 0) {
-            console.warn('[MCP Bridge] parseUIContent: No containers found for selector:', uiConfig.messageContainer);
+        // 支持单个选择器或多个选择器数组
+        const containerSelectors = Array.isArray(uiConfig.messageContainer) 
+            ? uiConfig.messageContainer 
+            : [uiConfig.messageContainer];
+        
+        // 收集所有匹配的容器（来自所有选择器）
+        const allContainers = [];
+        
+        for (const selector of containerSelectors) {
+            const found = document.querySelectorAll(selector);
+            if (found && found.length > 0) {
+                allContainers.push(...Array.from(found));
+            }
+        }
+        
+        if (allContainers.length === 0) {
+            console.warn('[MCP Bridge] parseUIContent: No containers found for selectors:', containerSelectors);
             return '';
         }
+        
+        // 去重（同一个元素可能被多个选择器匹配）
+        const uniqueContainers = Array.from(new Set(allContainers));
+        
+        // 按 DOM 顺序排序（确保获取真正的最后一条消息）
+        uniqueContainers.sort((a, b) => {
+            const position = a.compareDocumentPosition(b);
+            if (position & Node.DOCUMENT_POSITION_FOLLOWING) {
+                return -1; // a 在 b 前面
+            } else if (position & Node.DOCUMENT_POSITION_PRECEDING) {
+                return 1;  // a 在 b 后面
+            }
+            return 0;
+        });
+        
+        console.log('[MCP Bridge] parseUIContent: Found', uniqueContainers.length, 'message containers');
 
         // 获取指定索引的消息容器（支持负数索引）
         const index = uiConfig.messageIndex ?? -1;
-        const targetIndex = index < 0 ? containers.length + index : index;
-        const messageContainer = containers[targetIndex];
+        const targetIndex = index < 0 ? uniqueContainers.length + index : index;
+        const messageContainer = uniqueContainers[targetIndex];
 
         if (!messageContainer) {
             console.warn('[MCP Bridge] parseUIContent: No container at index:', targetIndex);
             return '';
         }
 
-        // 如果配置了内容选择器，使用它
+        // 如果配置了内容选择器，使用它（也支持数组）
         let contentElement = messageContainer;
         if (uiConfig.contentSelector) {
-            const selected = messageContainer.querySelector(uiConfig.contentSelector);
-            if (selected) {
-                contentElement = selected;
-            } else {
-                console.warn('[MCP Bridge] parseUIContent: Content selector not found:', uiConfig.contentSelector);
+            const contentSelectors = Array.isArray(uiConfig.contentSelector)
+                ? uiConfig.contentSelector
+                : [uiConfig.contentSelector];
+            
+            for (const selector of contentSelectors) {
+                if (!selector) continue; // 跳过空字符串
+                const selected = messageContainer.querySelector(selector);
+                if (selected) {
+                    contentElement = selected;
+                    break;
+                }
             }
         }
 
