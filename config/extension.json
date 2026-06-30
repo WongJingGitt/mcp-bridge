@@ -1,0 +1,8 @@
+[
+  {
+    "extension_id": "kdmpkkahkhdmdhfkdihkopikgcocbpbf",
+    "name": "DeepSeek++",
+    "affected_sites": ["chat.deepseek.com"],
+    "note": "同样修改请求体 prompt 字段，叠加后导致格式错乱"
+  }
+]
