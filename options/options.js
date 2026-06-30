@@ -7,8 +7,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
     const elements = {
-        mainNav: document.querySelector('.main-nav'),
-        views: document.querySelectorAll('.main-view'),
+        mainNav: document.querySelector('.sidebar-nav'),
+        views: document.querySelectorAll('.view'),
         siteList: document.getElementById('siteList'),
         serviceToggleList: document.getElementById('serviceToggleList'),
         configEditor: document.getElementById('configEditor'),
@@ -109,12 +109,12 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // 添加超时机制
             const storageData = await Promise.race([
-                chrome.storage.local.get(['api_list', 'always_inject']),
+                chrome.storage.local.get(['api_list', 'always_inject', 'disable_first_inject', 'conflict_disabled_sites', 'conflict_extension_cache']),
                 new Promise((_, reject) => 
                     setTimeout(() => reject(new Error('chrome.storage.local.get timeout')), 5000)
                 )
             ]);
-            const { api_list, always_inject = {} } = storageData;
+            const { api_list, always_inject = {}, disable_first_inject = {}, conflict_disabled_sites = [], conflict_extension_cache } = storageData;
             if (!api_list) {
                 return;
             }
@@ -122,40 +122,74 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.siteList.innerHTML = '';
             for (const site of api_list) {
                 const siteItem = document.createElement('li');
-                siteItem.className = 'site-item';
+                siteItem.className = 'site-card';
+
+                const firstInjectEnabled = !disable_first_inject[site.hostname];
+                const isConflictDisabled = conflict_disabled_sites.includes(site.hostname);
+
+                // 查找冲突的扩展名称
+                let conflictExtName = '';
+                if (conflict_extension_cache?.data) {
+                    for (const ext of conflict_extension_cache.data) {
+                        if (ext.affected_sites?.includes(site.hostname)) {
+                            conflictExtName = ext.name || ext.extension_id || '未知扩展';
+                            break;
+                        }
+                    }
+                }
+                if (isConflictDisabled && !conflictExtName) {
+                    try {
+                        const localResp = await fetch(chrome.runtime.getURL('config/extension.json'));
+                        if (localResp.ok) {
+                            const localList = await localResp.json();
+                            for (const ext of localList) {
+                                if (ext.affected_sites?.includes(site.hostname)) {
+                                    conflictExtName = ext.name || ext.extension_id || '未知扩展';
+                                    break;
+                                }
+                            }
+                        }
+                    } catch (e) { /* ignore */ }
+                    if (!conflictExtName) conflictExtName = '未知扩展';
+                }
+
                 siteItem.innerHTML = `
-                    <div class="site-info">
-                        <div class="site-header">
-                            <span class="site-name">${site.label}</span>
-                            <span class="site-hostname">${site.hostname}</span>
-                        </div>
-                    </div>
-                    <div class="site-controls">
-                        <div class="control-group">
-                            <div class="control-item">
-                                <span class="control-label">
-                                    <span class="control-icon">🔄</span>
-                                    <span>自动注入</span>
-                                </span>
-                                <label class="switch">
-                                    <input type="checkbox" data-hostname="${site.hostname}" class="always-inject-toggle" ${always_inject[site.hostname] ? 'checked' : ''}>
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-                            <!-- 预留其他控制项 -->
-                            <!-- <div class="control-item">
-                                <span class="control-label">
-                                    <span class="control-icon">🎯</span>
-                                    <span>启用 MCP</span>
-                                </span>
-                                <label class="switch">
-                                    <input type="checkbox" disabled>
-                                    <span class="slider"></span>
-                                </label>
-                            </div> -->
-                        </div>
-                    </div>
-                `;
+    <div class="site-card-header">
+        <div class="site-avatar">${site.label.charAt(0)}</div>
+        <div class="site-meta">
+            <span class="site-name">${site.label}</span>
+            <span class="site-domain">${site.hostname}</span>
+        </div>
+    </div>
+    <div class="site-card-controls">
+        <div class="toggle-row">
+            <div class="toggle-info">
+                <span class="toggle-label">首次自动注入</span>
+                <span class="toggle-hint">新对话时注入 System Prompt</span>
+            </div>
+            <label class="switch">
+                <input type="checkbox" data-hostname="${site.hostname}" class="disable-first-inject-toggle" ${firstInjectEnabled ? 'checked' : ''}>
+                <span class="slider"></span>
+            </label>
+        </div>
+        <div class="toggle-row">
+            <div class="toggle-info">
+                <span class="toggle-label">每次注入</span>
+                <span class="toggle-hint">每条消息都注入工具列表</span>
+            </div>
+            <label class="switch">
+                <input type="checkbox" data-hostname="${site.hostname}" class="always-inject-toggle" ${always_inject[site.hostname] ? 'checked' : ''}>
+                <span class="slider"></span>
+            </label>
+        </div>
+    </div>
+    ${isConflictDisabled ? `
+    <div class="conflict-banner">
+        <span class="conflict-banner-icon">⚠️</span>
+        <span>因与「${conflictExtName}」扩展冲突，已自动关闭首次注入</span>
+    </div>
+    ` : ''}
+`;
                 elements.siteList.appendChild(siteItem);
             }
         } catch (error) {
@@ -169,30 +203,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const services = currentConfig.mcpServers || {};
 
         if (Object.keys(services).length === 0) {
-            elements.serviceToggleList.innerHTML = '<li class="service-toggle-item">配置文件中暂无服务。</li>';
+            elements.serviceToggleList.innerHTML = '<li class="service-card">配置文件中暂无服务。</li>';
             return;
         }
 
         for (const [name, config] of Object.entries(services)) {
             const isEnabled = config.enabled !== false;
             const item = document.createElement('li');
-            item.className = 'service-toggle-item';
+            item.className = 'service-card';
             item.innerHTML = `
-                <div class="service-info">
-                    <div class="service-name">${name}</div>
-                    <p class="service-description">${config.description || '无描述'}</p>
+                <div class="service-card-header">
+                    <div class="service-card-info">
+                        <span class="service-card-name">${name}</span>
+                        <span class="service-card-desc">${config.description || '无描述'}</span>
+                    </div>
                 </div>
-                <div class="service-actions">
+                <div class="service-card-actions">
                     <div class="service-status" data-service-name="${name}">
-                        <span class="status-indicator checking"></span>
+                        <span class="status-dot checking"></span>
                         <span class="status-text">检测中...</span>
                     </div>
-                    <button class="button restart-button" data-service-name="${name}" title="重启服务">
-                        🔄 重启
-                    </button>
-                    <button class="button delete-button" data-service-name="${name}" title="删除服务">
-                        🗑️ 删除
-                    </button>
+                    <button class="btn btn-sm btn-secondary restart-button" data-service-name="${name}">重启</button>
+                    <button class="btn btn-sm btn-danger delete-button" data-service-name="${name}">删除</button>
                     <label class="switch">
                         <input type="checkbox" data-service-name="${name}" class="service-toggle" ${isEnabled ? 'checked' : ''}>
                         <span class="slider"></span>
@@ -271,7 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const statusEl = elements.serviceToggleList.querySelector(`.service-status[data-service-name="${serviceName}"]`);
         if (!statusEl) return;
         
-        const indicator = statusEl.querySelector('.status-indicator');
+        const indicator = statusEl.querySelector('.status-dot');
         const text = statusEl.querySelector('.status-text');
         
         try {
@@ -283,25 +315,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
                 if (data.success && data.tools) {
                     // 服务正常运行
-                    indicator.className = 'status-indicator running';
+                    indicator.className = 'status-dot running';
                     text.textContent = '运行中';
                 } else {
                     // 返回了但有错误
-                    indicator.className = 'status-indicator error';
+                    indicator.className = 'status-dot error';
                     text.textContent = '异常';
                 }
             } else if (response.status === 404) {
                 // 服务未运行
-                indicator.className = 'status-indicator stopped';
+                indicator.className = 'status-dot stopped';
                 text.textContent = '已停止';
             } else {
                 // 其他错误
-                indicator.className = 'status-indicator error';
+                indicator.className = 'status-dot error';
                 text.textContent = '错误';
             }
         } catch (error) {
             // 无法连接到服务器
-            indicator.className = 'status-indicator stopped';
+            indicator.className = 'status-dot stopped';
             text.textContent = '未运行';
         }
     }
@@ -457,7 +489,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // 安全地移除当前活动的导航项的active类
-        const activeNavItem = elements.mainNav.querySelector('.nav-item.active');
+        const activeNavItem = document.querySelector('.sidebar-nav .nav-item.active');
         if (activeNavItem) {
             activeNavItem.classList.remove('active');
         }
@@ -486,7 +518,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 const { always_inject = {} } = await chrome.storage.local.get('always_inject');
                 always_inject[hostname] = isEnabled;
                 await chrome.storage.local.set({ always_inject });
-                toast(`已为 ${hostname} ${isEnabled ? '开启' : '关闭'} “每次都注入”`);
+                toast(`已为 ${hostname} ${isEnabled ? '开启' : '关闭'} 每次注入`);
+            } catch (error) {
+                toast('保存设置失败', 'error');
+            }
+        } else if (event.target.classList.contains('disable-first-inject-toggle')) {
+            const hostname = event.target.dataset.hostname;
+            const checked = event.target.checked;
+            try {
+                const storage = await chrome.storage.local.get(['disable_first_inject', 'conflict_disabled_sites']);
+                const disable_first_inject = storage.disable_first_inject || {};
+                const conflict_disabled_sites = storage.conflict_disabled_sites || [];
+
+                disable_first_inject[hostname] = !checked;
+
+                // 用户手动重新开启，从冲突禁用列表中移除
+                if (checked && conflict_disabled_sites.includes(hostname)) {
+                    const idx = conflict_disabled_sites.indexOf(hostname);
+                    conflict_disabled_sites.splice(idx, 1);
+                }
+
+                await chrome.storage.local.set({ disable_first_inject, conflict_disabled_sites });
+                toast(`已为 ${hostname} ${checked ? '开启' : '关闭'} 首次自动注入`);
             } catch (error) {
                 toast('保存设置失败', 'error');
             }
