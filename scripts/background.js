@@ -1,10 +1,11 @@
-﻿/**
+/**
  * background.js (Corrected with robust async message handling)
  */
 
 import * as apiClient from '../modules/api_client.js';
 import * as promptBuilder from '../modules/prompt_builder.js';
 import {getConfig} from "../modules/api_client.js";
+import { detectConflicts } from '../scripts/conflict_detector.js';
 
 // --- 插件生命周期事件 ---
 chrome.runtime.onInstalled.addListener(async (details) => {
@@ -24,9 +25,28 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 chrome.webNavigation.onCompleted.addListener(async (details) => {
     if (details.frameId === 0) {
         try {
-            const {api_list} = await chrome.storage.local.get('api_list');
+            const {api_list, conflict_disabled_sites = []} = await chrome.storage.local.get(['api_list', 'conflict_disabled_sites']);
             if (api_list) {
                 await chrome.tabs.sendMessage(details.tabId, {type: 'STORE_API_LIST', payload: api_list});
+            }
+            const hostname = new URL(details.url).hostname;
+            // 命中 AI 站点时触发冲突检测
+            if (api_list?.some(site => site.hostname === hostname)) {
+                detectConflicts();
+            }
+            // 冲突站点通知 — 从缓存取扩展名
+            if (conflict_disabled_sites.includes(hostname)) {
+                const { conflict_extension_cache } = await chrome.storage.local.get('conflict_extension_cache');
+                let conflictExtName = '';
+                if (conflict_extension_cache?.data) {
+                    for (const ext of conflict_extension_cache.data) {
+                        if (ext.affected_sites?.includes(hostname)) {
+                            conflictExtName = ext.name;
+                            break;
+                        }
+                    }
+                }
+                await chrome.tabs.sendMessage(details.tabId, {type: 'SHOW_CONFLICT_NOTICE', payload: {hostname, conflictExtName}});
             }
         } catch (error) { /* 忽略 */
         }
@@ -136,7 +156,7 @@ async function handleRequestBody(tabId, payload) {
         return createResponse(JSON.stringify(state.modifiedBody));
     }
 
-    const {api_list, always_inject = {}} = await chrome.storage.local.get(['api_list', 'always_inject']);
+    const {api_list, always_inject = {}, disable_first_inject = {}, conflict_disabled_sites = []} = await chrome.storage.local.get(['api_list', 'always_inject', 'disable_first_inject', 'conflict_disabled_sites']);
     const siteConfig = getSiteConfig(payload.url, api_list);
     if (!siteConfig) return createResponse(payload.body);
 
@@ -154,7 +174,7 @@ async function handleRequestBody(tabId, payload) {
     const isNewConversation = checkIsNewConversation(bodyJson, siteConfig);
     const shouldAlwaysInject = always_inject[siteConfig.hostname] || false;
 
-    if (isNewConversation || shouldAlwaysInject) {
+    if (!disable_first_inject[siteConfig.hostname] && !conflict_disabled_sites.includes(siteConfig.hostname) && (isNewConversation || shouldAlwaysInject)) {
         await updateUIPanel(tabId, 'EXECUTING', '正在构建并注入 MCP Prompt...');
         const services = await apiClient.getServices(); // 如果这里失败，会被外层 try/catch 捕获
         const initialPrompt = promptBuilder.buildInitialPrompt(services);

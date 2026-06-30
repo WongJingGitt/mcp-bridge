@@ -192,6 +192,10 @@ function handleBackgroundMessage(message, sender, sendResponse, StatusPanel) {
             const content = parseUIContent(payload.uiConfig);
             sendResponse({ success: true, content });
             break;
+        case 'SHOW_CONFLICT_NOTICE':
+            checkAndShowConflictNotice(payload.hostname, payload.conflictExtName);
+            sendResponse({ success: true });
+            break;
         default:
             sendResponse({ success: true });
             break;
@@ -438,6 +442,37 @@ async function checkAndShowOnLoadTip(apiList, hostname) {
         
     } catch (error) {
         console.error('[MCP Bridge] Error showing onLoad tip:', error);
+    }
+}
+
+/**
+ * 检查并显示冲突通知
+ * @param {string} hostname - 当前网站域名
+ * @param {string} conflictExtName - 冲突扩展名（由 background 传入）
+ */
+async function checkAndShowConflictNotice(hostname, conflictExtName) {
+    try {
+        // 检查是否已关闭过通知
+        const closedKey = `mcp_bridge_conflict_notice_closed_${hostname}`;
+        if (localStorage.getItem(closedKey) === 'true') {
+            return;
+        }
+
+        // 注入样式
+        const styleUrl = chrome.runtime.getURL('ui/conflict_notice.css');
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = styleUrl;
+        document.head.appendChild(link);
+
+        // 动态导入并创建通知
+        const logoUrl = chrome.runtime.getURL('icons/icon-16.png');
+        const noticeUrl = chrome.runtime.getURL('ui/conflict_notice.js');
+        const { ConflictNotice } = await import(noticeUrl);
+        const notice = new ConflictNotice();
+        notice.create(conflictExtName || '未知扩展', logoUrl);
+    } catch (error) {
+        console.error('[MCP Bridge] Failed to show conflict notice:', error);
     }
 }
 
