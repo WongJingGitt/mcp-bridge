@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
   "name": "MCP Bridge",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "通过本地桥接服务，为网页大模型提供强大的MCP工具调用能力。",
   "permissions": [
     "storage",
     "scripting",
-    "webNavigation"
+    "webNavigation",
+    "management"
   ],
   "host_permissions": [
     "http://localhost:3849/*",
@@ -65,6 +66,8 @@
         "ui/status_panel.js",
         "ui/confirm_dialog.css",
         "ui/confirm_dialog.js",
+        "ui/conflict_notice.css",
+        "ui/conflict_notice.js",
         "modules/input_injector.js"
       ],
       "matches": [
